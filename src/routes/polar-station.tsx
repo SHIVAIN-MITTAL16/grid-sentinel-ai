@@ -1,10 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { BatteryCharging, CloudSnow, Fuel, ShieldCheck, Wind } from "lucide-react";
 import {
+  fetchPolarSimulation,
   getPolarStationState,
   optimizePolarDispatch,
   runPolarRiskSimulation,
+  type PolarBackendResult,
   type PolarScenario,
 } from "@/services/polar-station";
 
@@ -30,21 +32,54 @@ const SCENARIOS: { id: PolarScenario; name: string; storm: number; light: number
 
 function PolarStation() {
   const [scenario, setScenario] = useState<PolarScenario>("nominal");
+  const [backend, setBackend] = useState<PolarBackendResult | null>(null);
+  const [backendError, setBackendError] = useState<string | null>(null);
   const selected = SCENARIOS.find((item) => item.id === scenario)!;
-  const state = getPolarStationState(scenario);
-  const risk = useMemo(() => runPolarRiskSimulation(state), [state]);
-  const optimized = useMemo(() => optimizePolarDispatch(state), [state]);
+  const fallbackState = useMemo(() => getPolarStationState(scenario), [scenario]);
+  const fallbackRisk = useMemo(() => runPolarRiskSimulation(fallbackState), [fallbackState]);
+  const fallbackOptimized = useMemo(() => optimizePolarDispatch(fallbackState), [fallbackState]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setBackendError(null);
+    fetchPolarSimulation(scenario)
+      .then((result) => {
+        if (!cancelled) setBackend(result);
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setBackend(null);
+          setBackendError(error instanceof Error ? error.message : "Backend unavailable");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [scenario]);
+
+  const state = backend?.state ?? fallbackState;
+  const risk = backend?.risk ?? fallbackRisk;
+  const optimized = backend?.optimized ?? fallbackOptimized;
+  const live = Boolean(backend);
 
   return (
     <div className="px-6 py-6 space-y-6">
       <section className="panel p-6">
-        <div className="hud-label mb-2">POLAR RESEARCH STATION · DIGITAL TWIN · SIH26061</div>
+        <div className="flex items-center justify-between gap-4">
+          <div className="hud-label mb-2">POLAR RESEARCH STATION · DIGITAL TWIN · SIH26061</div>
+          <div className={`text-[10px] font-mono px-2 py-1 rounded border ${live ? "border-green-400/30 text-green-300" : "border-yellow-400/30 text-yellow-300"}`}>
+            {live ? "● PYTHON BACKEND LIVE" : "○ LOCAL FALLBACK"}
+          </div>
+        </div>
         <h1 className="text-3xl font-display font-semibold">
           Weather-aware <span className="text-[oklch(0.72_0.18_245)]">energy intelligence</span>.
         </h1>
         <p className="text-muted-foreground mt-2 max-w-3xl">
           A separate polar-station digital twin added alongside the original India National Grid Digital Twin. It models weather stress, load, renewable availability, battery reserve, backup generation and probabilistic energy-security risk.
         </p>
+        {backendError && (
+          <p className="mt-3 text-xs text-yellow-300">Backend connection lost — showing deterministic local fallback. Start Python on port 8010 to restore live engine data.</p>
+        )}
       </section>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
