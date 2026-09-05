@@ -24,6 +24,12 @@ export interface PolarRiskResult {
   recommendedAction: string;
 }
 
+export interface PolarBackendResult {
+  state: PolarStationState;
+  risk: PolarRiskResult;
+  optimized: PolarRiskResult;
+}
+
 const BASE: Record<PolarScenario, Omit<PolarStationState, "scenario">> = {
   nominal: {
     loadKw: 72, criticalLoadKw: 48, deferrableLoadKw: 24, solarKw: 18, windKw: 42,
@@ -45,6 +51,15 @@ const BASE: Record<PolarScenario, Omit<PolarStationState, "scenario">> = {
 
 export function getPolarStationState(scenario: PolarScenario = "nominal"): PolarStationState {
   return { scenario, ...BASE[scenario] };
+}
+
+export async function fetchPolarSimulation(scenario: PolarScenario): Promise<PolarBackendResult> {
+  const response = await fetch(
+    `http://127.0.0.1:8010/polar-simulation?scenario=${encodeURIComponent(scenario)}`,
+    { cache: "no-store" },
+  );
+  if (!response.ok) throw new Error(`Backend returned HTTP ${response.status}`);
+  return response.json() as Promise<PolarBackendResult>;
 }
 
 export function runPolarRiskSimulation(
@@ -92,8 +107,6 @@ export function runPolarRiskSimulation(
 
   const shortageProbabilityPercent = (shortage / scenarios) * 100;
   const renewableUtilizationPercent = renewableAvailable > 0 ? (renewableUsed / renewableAvailable) * 100 : 0;
-  const fuelUsedLitres = fuelUsed;
-
   let recommendedAction = "Maintain renewable-first dispatch and preserve the battery reserve target.";
   if (shortageProbabilityPercent > 5 || minSoc < state.reserveTargetPercent) {
     recommendedAction = "Protect critical loads, defer flexible loads, preserve battery reserve, and start backup generation before reserve breach.";
@@ -106,7 +119,7 @@ export function runPolarRiskSimulation(
     shortageProbabilityPercent: round(shortageProbabilityPercent),
     expectedUnservedEnergyKwh: round(eue / scenarios),
     minimumSocPercent: round(Math.max(0, minSoc)),
-    fuelUsedLitres: round(fuelUsedLitres / scenarios),
+    fuelUsedLitres: round(fuelUsed / scenarios),
     renewableUtilizationPercent: round(renewableUtilizationPercent),
     recommendedAction,
   };
