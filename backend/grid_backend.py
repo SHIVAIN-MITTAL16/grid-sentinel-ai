@@ -5,7 +5,9 @@ logic independently runnable and testable from a terminal or CI environment.
 """
 from __future__ import annotations
 
+import csv
 from dataclasses import dataclass, asdict
+from pathlib import Path
 
 
 @dataclass(frozen=True)
@@ -23,6 +25,13 @@ FUEL_STOCK = (
     FuelSource("Natural Gas", 6200, 2500, 5600, 52, 490),
     FuelSource("Biomass", 2800, 700, 4800, 30, 230),
     FuelSource("Diesel", 1450, 450, 9800, 40, 730),
+)
+
+
+BENCHMARK_DATASET = (
+    Path(__file__).resolve().parent.parent
+    / "data"
+    / "grid_sentinel_synthetic_benchmark_240.csv"
 )
 
 
@@ -58,16 +67,33 @@ def optimize_fuel_dispatch(demand_mw: float, renewable_mw: float, battery_mw: fl
 
 
 def model_benchmark() -> dict:
-    # Transparent synthetic benchmark. Never describe these values as field accuracy.
-    sample_count = 240
-    mathematical_correct = 238
-    ml_correct = 211
+    """Calculate benchmark metrics from the checked-in synthetic replay dataset."""
+    if not BENCHMARK_DATASET.exists():
+        raise FileNotFoundError(f"Benchmark dataset not found: {BENCHMARK_DATASET}")
+
+    with BENCHMARK_DATASET.open(newline="", encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle))
+
+    sample_count = len(rows)
+    if sample_count == 0:
+        raise ValueError("Benchmark dataset is empty")
+
+    mathematical_correct = sum(
+        row["mathematical_prediction"] == row["expected_outcome"] for row in rows
+    )
+    ml_correct = sum(
+        row["ml_prediction"] == row["expected_outcome"] for row in rows
+    )
+
     return {
         "sample_count": sample_count,
+        "mathematical_correct": mathematical_correct,
+        "ml_correct": ml_correct,
         "mathematical_accuracy_percent": round(mathematical_correct / sample_count * 100, 1),
         "ml_accuracy_percent": round(ml_correct / sample_count * 100, 1),
         "mathematical_lead_time_hours": 54,
         "ml_lead_time_hours": 10,
+        "dataset": str(BENCHMARK_DATASET.relative_to(BENCHMARK_DATASET.parent.parent)),
         "note": "Synthetic deterministic replay; ML is a counterfactual baseline, not a production model claim.",
     }
 
