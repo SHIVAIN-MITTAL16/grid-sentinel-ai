@@ -14,43 +14,36 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SimulationRouteImport } from './routes/simulation'
 import { Route as DigitalTwinRouteImport } from './routes/digital-twin'
 import { Route as ControlRoomRouteImport } from './routes/control-room'
+import { Route as EvidenceRoomRouteImport } from './routes/evidence-room'
 import { Route as IndexRouteImport } from './routes/index'
 
 const Texas2021Route = Texas2021RouteImport.update({
-  id: '/texas-2021',
-  path: '/texas-2021',
-  getParentRoute: () => rootRouteImport,
+  id: '/texas-2021', path: '/texas-2021', getParentRoute: () => rootRouteImport,
 } as any)
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
-  id: '/sitemap.xml',
-  path: '/sitemap.xml',
-  getParentRoute: () => rootRouteImport,
+  id: '/sitemap.xml', path: '/sitemap.xml', getParentRoute: () => rootRouteImport,
 } as any)
 const SimulationRoute = SimulationRouteImport.update({
-  id: '/simulation',
-  path: '/simulation',
-  getParentRoute: () => rootRouteImport,
+  id: '/simulation', path: '/simulation', getParentRoute: () => rootRouteImport,
 } as any)
 const DigitalTwinRoute = DigitalTwinRouteImport.update({
-  id: '/digital-twin',
-  path: '/digital-twin',
-  getParentRoute: () => rootRouteImport,
+  id: '/digital-twin', path: '/digital-twin', getParentRoute: () => rootRouteImport,
 } as any)
 const ControlRoomRoute = ControlRoomRouteImport.update({
-  id: '/control-room',
-  path: '/control-room',
-  getParentRoute: () => rootRouteImport,
+  id: '/control-room', path: '/control-room', getParentRoute: () => rootRouteImport,
+} as any)
+const EvidenceRoomRoute = EvidenceRoomRouteImport.update({
+  id: '/evidence-room', path: '/evidence-room', getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
+  id: '/', path: '/', getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/control-room': typeof ControlRoomRoute
   '/digital-twin': typeof DigitalTwinRoute
+  '/evidence-room': typeof EvidenceRoomRoute
   '/simulation': typeof SimulationRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/texas-2021': typeof Texas2021Route
@@ -59,6 +52,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/control-room': typeof ControlRoomRoute
   '/digital-twin': typeof DigitalTwinRoute
+  '/evidence-room': typeof EvidenceRoomRoute
   '/simulation': typeof SimulationRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/texas-2021': typeof Texas2021Route
@@ -68,6 +62,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/control-room': typeof ControlRoomRoute
   '/digital-twin': typeof DigitalTwinRoute
+  '/evidence-room': typeof EvidenceRoomRoute
   '/simulation': typeof SimulationRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/texas-2021': typeof Texas2021Route
@@ -78,91 +73,55 @@ export interface FileRouteTypes {
     | '/'
     | '/control-room'
     | '/digital-twin'
+    | '/evidence-room'
     | '/simulation'
     | '/sitemap.xml'
     | '/texas-2021'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/control-room'
-    | '/digital-twin'
-    | '/simulation'
-    | '/sitemap.xml'
-    | '/texas-2021'
   id:
     | '__root__'
     | '/'
     | '/control-room'
     | '/digital-twin'
+    | '/evidence-room'
     | '/simulation'
     | '/sitemap.xml'
     | '/texas-2021'
   fileRoutesById: FileRoutesById
 }
+
+declare module '@tanstack/react-router' {
+  interface FileRoutesByPath {
+    '/texas-2021': { id: '/texas-2021'; path: '/texas-2021'; fullPath: '/texas-2021'; preLoaderRoute: typeof Texas2021RouteImport; parentRoute: typeof rootRouteImport }
+    '/sitemap.xml': { id: '/sitemap.xml'; path: '/sitemap.xml'; fullPath: '/sitemap.xml'; preLoaderRoute: typeof SitemapDotxmlRouteImport; parentRoute: typeof rootRouteImport }
+    '/simulation': { id: '/simulation'; path: '/simulation'; fullPath: '/simulation'; preLoaderRoute: typeof SimulationRouteImport; parentRoute: typeof rootRouteImport }
+    '/evidence-room': { id: '/evidence-room'; path: '/evidence-room'; fullPath: '/evidence-room'; preLoaderRoute: typeof EvidenceRoomRouteImport; parentRoute: typeof rootRouteImport }
+    '/digital-twin': { id: '/digital-twin'; path: '/digital-twin'; fullPath: '/digital-twin'; preLoaderRoute: typeof DigitalTwinRouteImport; parentRoute: typeof rootRouteImport }
+    '/control-room': { id: '/control-room'; path: '/control-room'; fullPath: '/control-room'; preLoaderRoute: typeof ControlRoomRouteImport; parentRoute: typeof rootRouteImport }
+    '/': { id: '/'; path: '/'; fullPath: '/'; preLoaderRoute: typeof IndexRouteImport; parentRoute: typeof rootRouteImport }
+  }
+}
+
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ControlRoomRoute: typeof ControlRoomRoute
   DigitalTwinRoute: typeof DigitalTwinRoute
+  EvidenceRoomRoute: typeof EvidenceRoomRoute
   SimulationRoute: typeof SimulationRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   Texas2021Route: typeof Texas2021Route
 }
 
-declare module '@tanstack/react-router' {
-  interface FileRoutesByPath {
-    '/texas-2021': {
-      id: '/texas-2021'
-      path: '/texas-2021'
-      fullPath: '/texas-2021'
-      preLoaderRoute: typeof Texas2021RouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/sitemap.xml': {
-      id: '/sitemap.xml'
-      path: '/sitemap.xml'
-      fullPath: '/sitemap.xml'
-      preLoaderRoute: typeof SitemapDotxmlRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/simulation': {
-      id: '/simulation'
-      path: '/simulation'
-      fullPath: '/simulation'
-      preLoaderRoute: typeof SimulationRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/digital-twin': {
-      id: '/digital-twin'
-      path: '/digital-twin'
-      fullPath: '/digital-twin'
-      preLoaderRoute: typeof DigitalTwinRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/control-room': {
-      id: '/control-room'
-      path: '/control-room'
-      fullPath: '/control-room'
-      preLoaderRoute: typeof ControlRoomRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-  }
+const rootRouteChildren: RootRouteChildren = {
+  IndexRoute,
+  ControlRoomRoute,
+  DigitalTwinRoute,
+  EvidenceRoomRoute,
+  SimulationRoute,
+  SitemapDotxmlRoute,
+  Texas2021Route,
 }
 
-const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  ControlRoomRoute: ControlRoomRoute,
-  DigitalTwinRoute: DigitalTwinRoute,
-  SimulationRoute: SimulationRoute,
-  SitemapDotxmlRoute: SitemapDotxmlRoute,
-  Texas2021Route: Texas2021Route,
-}
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
