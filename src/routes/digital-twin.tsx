@@ -1,6 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { DcNetworkView } from "@/components/grid/dc-network-view";
 import { IndiaGeoMap } from "@/components/grid/india-geo-map";
+import { analyseDcContingency } from "@/services/grid-engine/dc-power-flow";
+import { buildRepresentativeNetwork } from "@/services/grid-engine/network-model";
+import { runSimulationPipeline } from "@/services/grid-engine/simulation-pipeline";
 import {
   useGridOptimizerResult,
   useMonteCarloResult,
@@ -33,6 +37,37 @@ function DigitalTwin() {
   const snapshot = snapshotQuery.data;
   const monteCarlo = monteCarloQuery.data;
   const optimizer = optimizerQuery.data;
+  const [selectedContingency, setSelectedContingency] = useState("gujarat-maharashtra");
+  const [analysisActive, setAnalysisActive] = useState(false);
+  const dc = useMemo(() => {
+    const pipeline = runSimulationPipeline({
+      scenario: "base",
+      intervention: "hold",
+      timeMinutes: 0,
+      batterySocPct: 82,
+    });
+    const network = buildRepresentativeNetwork({
+      demandMW: pipeline.load.predictedDemandMW,
+      solarMW: pipeline.renewables.solarGenerationMW,
+      windMW: pipeline.renewables.windGenerationMW,
+      hydroMW: pipeline.dispatch.hydroMW,
+      thermalMW: pipeline.dispatch.thermalMW,
+      batteryMW: pipeline.dispatch.batteryMW,
+      importsMW: pipeline.dispatch.importsMW,
+      demandResponseMW: pipeline.dispatch.demandResponseMW,
+      unservedLoadMW: pipeline.dispatch.expectedUnservedEnergyMWh,
+    });
+    return {
+      network,
+      base: pipeline.contingency.powerFlow,
+      ranking: pipeline.contingency.topContingencies,
+    };
+  }, []);
+  const contingency = useMemo(
+    () => (analysisActive ? analyseDcContingency(dc.network, selectedContingency) : null),
+    [analysisActive, dc.network, selectedContingency],
+  );
+  const displayedPowerFlow = contingency?.postContingencyFlows ?? dc.base;
 
   const totals = useMemo(() => {
     const demand = snapshot
@@ -199,15 +234,28 @@ function DigitalTwin() {
       <aside className="space-y-4">
         <Widget title="Top Power Corridors">
           <div className="space-y-2">
-            {live.corridors.map(([a, b, v]) => (
+            {displayedPowerFlow.lineFlows.map((line) => (
               <div
-                key={`${a}-${b}`}
+                key={line.lineId}
                 className="flex items-center justify-between text-xs font-mono"
               >
                 <span className="text-foreground/90">
-                  {a} → {b}
+                  {line.fromBus.toUpperCase()} {line.flowMW >= 0 ? "→" : "←"}{" "}
+                  {line.toBus.toUpperCase()}
                 </span>
-                <span className="text-muted-foreground">{v}</span>
+                <span
+                  className={
+                    line.status === "overload"
+                      ? "text-red-300"
+                      : line.status === "watch"
+                        ? "text-amber-300"
+                        : "text-muted-foreground"
+                  }
+                >
+                  {line.status === "tripped"
+                    ? "TRIPPED"
+                    : `${Math.round(Math.abs(line.flowMW))} MW / ${line.thermalLimitMW} // ${line.loadingPct.toFixed(1)}%`}
+                </span>
               </div>
             ))}
           </div>
@@ -278,8 +326,110 @@ function DigitalTwin() {
             ))}
           </div>
         </Widget>
+
+        <DcSecurityPanel
+          buses={dc.network.buses}
+          base={dc.base}
+          displayed={displayedPowerFlow}
+          ranking={dc.ranking}
+          selectedLine={selectedContingency}
+          analysis={contingency}
+          analysisActive={analysisActive}
+          onSelect={setSelectedContingency}
+          onRun={() => setAnalysisActive(true)}
+          onReset={() => setAnalysisActive(false)}
+        />
       </aside>
     </div>
+  );
+}
+
+function DcSecurityPanel({
+  buses,
+  base,
+  displayed,
+  ranking,
+  selectedLine,
+  analysis,
+  analysisActive,
+  onSelect,
+  onRun,
+  onReset,
+}: {
+  buses: ReturnType<typeof buildRepresentativeNetwork>["buses"];
+  base: ReturnType<typeof runSimulationPipeline>["contingency"]["powerFlow"];
+  displayed: ReturnType<typeof runSimulationPipeline>["contingency"]["powerFlow"];
+  ranking: ReturnType<typeof runSimulationPipeline>["contingency"]["topContingencies"];
+  selectedLine: string;
+  analysis: ReturnType<typeof analyseDcContingency> | null;
+  analysisActive: boolean;
+  onSelect: (line: string) => void;
+  onRun: () => void;
+  onReset: () => void;
+}) {
+  const critical = ranking[0];
+  return (
+    <Widget title="N-1 Security">
+      <p className="font-mono text-[10px] text-cyan-300">
+        {analysisActive ? "N-1 ANALYSIS // HYPOTHETICAL" : "BASE CASE // DC POWER FLOW"}
+      </p>
+      <DcNetworkView buses={buses} powerFlow={displayed} />
+      <div className="grid grid-cols-2 gap-2 font-mono text-[10px]">
+        <KV k="Most Critical" v={critical.outagedLine.toUpperCase()} />
+        <KV k="Max Post-N-1" v={`${critical.maximumLoadingPct.toFixed(2)}%`} />
+        <KV k="Violations" v={String(critical.numberOfViolations)} />
+        <KV k="Islanding Risk" v={critical.isIslanded ? "YES" : "NO"} />
+      </div>
+      <select
+        value={selectedLine}
+        onChange={(event) => onSelect(event.target.value)}
+        className="mt-3 w-full border border-slate-700 bg-slate-950 p-2 font-mono text-[10px]"
+      >
+        {base.lineFlows.map((line) => (
+          <option key={line.lineId} value={line.lineId}>
+            {line.lineId.toUpperCase()}
+          </option>
+        ))}
+      </select>
+      <div className="mt-2 flex gap-2">
+        <button
+          onClick={onRun}
+          className="border border-cyan-400/50 px-2 py-1 font-mono text-[10px] text-cyan-200"
+        >
+          RUN N-1
+        </button>
+        <button
+          onClick={onReset}
+          className="border border-slate-700 px-2 py-1 font-mono text-[10px]"
+        >
+          RESET CONTINGENCY
+        </button>
+      </div>
+      {analysis && (
+        <p className="mt-2 font-mono text-[10px] text-amber-200">
+          BEFORE{" "}
+          {Math.round(base.lineFlows.find((line) => line.lineId === selectedLine)?.flowMW ?? 0)} MW
+          // AFTER 0 MW // MAX {analysis.maximumLoadingPct.toFixed(2)}%
+        </p>
+      )}
+      <details className="mt-3 font-mono text-[10px] text-slate-400">
+        <summary className="cursor-pointer text-slate-300">HOW IS THIS CALCULATED?</summary>
+        <p className="mt-2">
+          Pij = baseMVA × (θi - θj) / Xij. Power follows modeled bus-angle differences and
+          reactance; each N-1 case rebuilds and re-solves the reduced-order lossless DC network. Not
+          modeled: reactive power, voltage magnitude, AC losses, or transient stability.
+        </p>
+      </details>
+      <div className="mt-3 border-t border-slate-800 pt-2 font-mono text-[10px] text-slate-400">
+        N-1 RANKING{" "}
+        {ranking.map((item, index) => (
+          <p key={item.outagedLine}>
+            #{index + 1} {item.outagedLine.toUpperCase()} // {item.maximumLoadingPct.toFixed(1)}% //
+            V{item.numberOfViolations} // {item.isIslanded ? "ISLANDED" : "CONNECTED"}
+          </p>
+        ))}
+      </div>
+    </Widget>
   );
 }
 

@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Activity, Globe2, FlaskConical, BrainCircuit, Snowflake } from "lucide-react";
+import { Activity, Globe2, FlaskConical, BrainCircuit, Moon, Snowflake } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 
 const NAV = [
@@ -9,6 +9,7 @@ const NAV = [
   { to: "/simulation", label: "Crisis Lab", icon: FlaskConical, code: "04" },
   { to: "/texas-2021", label: "Texas 2021", icon: Snowflake, code: "05" },
   { to: "/control-room", label: "AI Control Room", icon: BrainCircuit, code: "06" },
+  { to: "/night-shift", label: "Night Shift", icon: Moon, code: "07" },
 ] as const;
 
 export function AppShell({ children }: { children: ReactNode }) {

@@ -12,9 +12,11 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as Texas2021RouteImport } from './routes/texas-2021'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SimulationRouteImport } from './routes/simulation'
+import { Route as PolarStationRouteImport } from './routes/polar-station'
+import { Route as NightShiftRouteImport } from './routes/night-shift'
+import { Route as EvidenceRoomRouteImport } from './routes/evidence-room'
 import { Route as DigitalTwinRouteImport } from './routes/digital-twin'
 import { Route as ControlRoomRouteImport } from './routes/control-room'
-import { Route as PolarStationRouteImport } from './routes/polar-station'
 import { Route as IndexRouteImport } from './routes/index'
 
 const Texas2021Route = Texas2021RouteImport.update({
@@ -32,6 +34,21 @@ const SimulationRoute = SimulationRouteImport.update({
   path: '/simulation',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PolarStationRoute = PolarStationRouteImport.update({
+  id: '/polar-station',
+  path: '/polar-station',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NightShiftRoute = NightShiftRouteImport.update({
+  id: '/night-shift',
+  path: '/night-shift',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EvidenceRoomRoute = EvidenceRoomRouteImport.update({
+  id: '/evidence-room',
+  path: '/evidence-room',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DigitalTwinRoute = DigitalTwinRouteImport.update({
   id: '/digital-twin',
   path: '/digital-twin',
@@ -40,11 +57,6 @@ const DigitalTwinRoute = DigitalTwinRouteImport.update({
 const ControlRoomRoute = ControlRoomRouteImport.update({
   id: '/control-room',
   path: '/control-room',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PolarStationRoute = PolarStationRouteImport.update({
-  id: '/polar-station',
-  path: '/polar-station',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -57,6 +69,8 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/control-room': typeof ControlRoomRoute
   '/digital-twin': typeof DigitalTwinRoute
+  '/evidence-room': typeof EvidenceRoomRoute
+  '/night-shift': typeof NightShiftRoute
   '/polar-station': typeof PolarStationRoute
   '/simulation': typeof SimulationRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -66,6 +80,8 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/control-room': typeof ControlRoomRoute
   '/digital-twin': typeof DigitalTwinRoute
+  '/evidence-room': typeof EvidenceRoomRoute
+  '/night-shift': typeof NightShiftRoute
   '/polar-station': typeof PolarStationRoute
   '/simulation': typeof SimulationRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -76,6 +92,8 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/control-room': typeof ControlRoomRoute
   '/digital-twin': typeof DigitalTwinRoute
+  '/evidence-room': typeof EvidenceRoomRoute
+  '/night-shift': typeof NightShiftRoute
   '/polar-station': typeof PolarStationRoute
   '/simulation': typeof SimulationRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -87,6 +105,8 @@ export interface FileRouteTypes {
     | '/'
     | '/control-room'
     | '/digital-twin'
+    | '/evidence-room'
+    | '/night-shift'
     | '/polar-station'
     | '/simulation'
     | '/sitemap.xml'
@@ -96,6 +116,8 @@ export interface FileRouteTypes {
     | '/'
     | '/control-room'
     | '/digital-twin'
+    | '/evidence-room'
+    | '/night-shift'
     | '/polar-station'
     | '/simulation'
     | '/sitemap.xml'
@@ -105,6 +127,8 @@ export interface FileRouteTypes {
     | '/'
     | '/control-room'
     | '/digital-twin'
+    | '/evidence-room'
+    | '/night-shift'
     | '/polar-station'
     | '/simulation'
     | '/sitemap.xml'
@@ -115,6 +139,8 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ControlRoomRoute: typeof ControlRoomRoute
   DigitalTwinRoute: typeof DigitalTwinRoute
+  EvidenceRoomRoute: typeof EvidenceRoomRoute
+  NightShiftRoute: typeof NightShiftRoute
   PolarStationRoute: typeof PolarStationRoute
   SimulationRoute: typeof SimulationRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
@@ -151,6 +177,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PolarStationRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/night-shift': {
+      id: '/night-shift'
+      path: '/night-shift'
+      fullPath: '/night-shift'
+      preLoaderRoute: typeof NightShiftRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/evidence-room': {
+      id: '/evidence-room'
+      path: '/evidence-room'
+      fullPath: '/evidence-room'
+      preLoaderRoute: typeof EvidenceRoomRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/digital-twin': {
       id: '/digital-twin'
       path: '/digital-twin'
@@ -179,6 +219,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ControlRoomRoute: ControlRoomRoute,
   DigitalTwinRoute: DigitalTwinRoute,
+  EvidenceRoomRoute: EvidenceRoomRoute,
+  NightShiftRoute: NightShiftRoute,
   PolarStationRoute: PolarStationRoute,
   SimulationRoute: SimulationRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
