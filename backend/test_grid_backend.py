@@ -1,6 +1,6 @@
 import unittest
 
-from grid_backend import (
+from backend.grid_backend import (
     model_benchmark,
     optimize_fuel_dispatch,
     reserve_margin,
