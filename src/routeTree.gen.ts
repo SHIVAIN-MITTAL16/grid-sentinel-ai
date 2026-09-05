@@ -14,6 +14,7 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SimulationRouteImport } from './routes/simulation'
 import { Route as DigitalTwinRouteImport } from './routes/digital-twin'
 import { Route as ControlRoomRouteImport } from './routes/control-room'
+import { Route as PolarStationRouteImport } from './routes/polar-station'
 import { Route as IndexRouteImport } from './routes/index'
 
 const Texas2021Route = Texas2021RouteImport.update({
@@ -41,6 +42,11 @@ const ControlRoomRoute = ControlRoomRouteImport.update({
   path: '/control-room',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PolarStationRoute = PolarStationRouteImport.update({
+  id: '/polar-station',
+  path: '/polar-station',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -51,6 +57,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/control-room': typeof ControlRoomRoute
   '/digital-twin': typeof DigitalTwinRoute
+  '/polar-station': typeof PolarStationRoute
   '/simulation': typeof SimulationRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/texas-2021': typeof Texas2021Route
@@ -59,6 +66,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/control-room': typeof ControlRoomRoute
   '/digital-twin': typeof DigitalTwinRoute
+  '/polar-station': typeof PolarStationRoute
   '/simulation': typeof SimulationRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/texas-2021': typeof Texas2021Route
@@ -68,6 +76,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/control-room': typeof ControlRoomRoute
   '/digital-twin': typeof DigitalTwinRoute
+  '/polar-station': typeof PolarStationRoute
   '/simulation': typeof SimulationRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/texas-2021': typeof Texas2021Route
@@ -78,6 +87,7 @@ export interface FileRouteTypes {
     | '/'
     | '/control-room'
     | '/digital-twin'
+    | '/polar-station'
     | '/simulation'
     | '/sitemap.xml'
     | '/texas-2021'
@@ -86,6 +96,7 @@ export interface FileRouteTypes {
     | '/'
     | '/control-room'
     | '/digital-twin'
+    | '/polar-station'
     | '/simulation'
     | '/sitemap.xml'
     | '/texas-2021'
@@ -94,6 +105,7 @@ export interface FileRouteTypes {
     | '/'
     | '/control-room'
     | '/digital-twin'
+    | '/polar-station'
     | '/simulation'
     | '/sitemap.xml'
     | '/texas-2021'
@@ -103,6 +115,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ControlRoomRoute: typeof ControlRoomRoute
   DigitalTwinRoute: typeof DigitalTwinRoute
+  PolarStationRoute: typeof PolarStationRoute
   SimulationRoute: typeof SimulationRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   Texas2021Route: typeof Texas2021Route
@@ -129,6 +142,13 @@ declare module '@tanstack/react-router' {
       path: '/simulation'
       fullPath: '/simulation'
       preLoaderRoute: typeof SimulationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/polar-station': {
+      id: '/polar-station'
+      path: '/polar-station'
+      fullPath: '/polar-station'
+      preLoaderRoute: typeof PolarStationRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/digital-twin': {
@@ -159,6 +179,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ControlRoomRoute: ControlRoomRoute,
   DigitalTwinRoute: DigitalTwinRoute,
+  PolarStationRoute: PolarStationRoute,
   SimulationRoute: SimulationRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   Texas2021Route: Texas2021Route,
