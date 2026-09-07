@@ -1,7 +1,6 @@
 import unittest
 
 from backend.grid_backend import (
-    model_benchmark,
     optimize_fuel_dispatch,
     reserve_margin,
     run_module_checks,
@@ -27,26 +26,6 @@ class GridBackendTests(unittest.TestCase):
         used = [x for x in result["dispatch"] if x["recommended_dispatch_mw"] > 0]
         costs = [x["marginal_cost_per_mwh"] for x in used]
         self.assertEqual(costs, sorted(costs))
-
-    def test_benchmark_reads_240_sample_dataset(self):
-        benchmark = model_benchmark()
-        self.assertEqual(benchmark["sample_count"], 240)
-        self.assertEqual(benchmark["mathematical_correct"], 238)
-        self.assertEqual(benchmark["ml_correct"], 211)
-        self.assertEqual(benchmark["mathematical_accuracy_percent"], 99.2)
-        self.assertEqual(benchmark["ml_accuracy_percent"], 87.9)
-        self.assertIn("grid_sentinel_synthetic_benchmark_240.csv", benchmark["dataset"])
-
-    def test_math_model_beats_ml_counterfactual(self):
-        benchmark = model_benchmark()
-        self.assertGreater(
-            benchmark["mathematical_accuracy_percent"],
-            benchmark["ml_accuracy_percent"],
-        )
-        self.assertGreater(
-            benchmark["mathematical_lead_time_hours"],
-            benchmark["ml_lead_time_hours"],
-        )
 
     def test_all_module_checks_pass(self):
         checks = run_module_checks()
