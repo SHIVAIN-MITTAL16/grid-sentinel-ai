@@ -4,7 +4,7 @@ import json
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import parse_qs, urlparse
 
-from grid_backend import health_payload, model_benchmark, optimize_fuel_dispatch
+from grid_backend import health_payload, optimize_fuel_dispatch
 
 
 POLAR_STATES = {
@@ -81,7 +81,7 @@ def polar_simulation(scenario: str) -> dict:
     optimized_state = {
         **state,
         "loadKw": max(state["criticalLoadKw"], state["loadKw"] - state["deferrableLoadKw"] * 0.55),
-        "batterySocPercent": max(state["batterySocPercent"], state["reserveTargetPercent"] + 12),
+        "batterySocPercent": state["batterySocPercent"],
     }
     optimized = polar_risk(optimized_state)
     if optimized["shortageProbabilityPercent"] < baseline["shortageProbabilityPercent"]:
@@ -109,8 +109,6 @@ class Handler(BaseHTTPRequestHandler):
         query = parse_qs(parsed.query)
         if path == "/health":
             self.send_json(health_payload())
-        elif path == "/model-benchmark":
-            self.send_json(model_benchmark())
         elif path == "/fuel-optimization":
             self.send_json(optimize_fuel_dispatch(7000, 2500, 600))
         elif path == "/polar-simulation":
@@ -126,5 +124,5 @@ class Handler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     print("Grid Sentinel backend verification server")
-    print("GET /health | /model-benchmark | /fuel-optimization | /polar-simulation?scenario=nominal")
+    print("GET /health | /fuel-optimization | /polar-simulation?scenario=nominal")
     HTTPServer(("0.0.0.0", 8010), Handler).serve_forever()
