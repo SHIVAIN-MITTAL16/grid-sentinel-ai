@@ -21,8 +21,10 @@ const BATTERY_MIN_FACTOR = 0.82;
 const BATTERY_MODE_FACTOR = 1.0;
 const BATTERY_MAX_FACTOR = 1.04;
 const BLACKOUT_RESERVE_THRESHOLD_PERCENT = 0;
+const CONFIDENCE_Z_95 = 1.96;
 const ROUND_PERCENT_SCALE = 10;
 const ROUND_MW_SCALE = 10;
+const ROUND_TIME_SCALE = 100;
 
 interface MonteCarloOptions {
   readonly simulations?: number;
@@ -44,10 +46,17 @@ interface PercentileSet {
   readonly p95: number;
 }
 
-interface MonteCarloResult {
+interface ConfidenceInterval {
+  readonly low: number;
+  readonly high: number;
+  readonly standardError: number;
+}
+
+export interface MonteCarloResult {
   readonly simulations: number;
   readonly seed: number;
   readonly blackoutProbability: number;
+  readonly blackoutProbabilityCi95: ConfidenceInterval;
   readonly meanReserveMargin: number;
   readonly meanSupplyDemandGapMw: number;
   readonly expectedRenewableGenerationMw: number;
@@ -55,21 +64,34 @@ interface MonteCarloResult {
   readonly renewableGenerationPercentiles: PercentileSet;
   readonly lossOfLoadProbability: number;
   readonly expectedUnservedEnergyMwh: number;
+  readonly expectedUnservedEnergyCi95: ConfidenceInterval;
+  /** Absolute difference between first-half and second-half LOLP estimates, in percentage points. */
+  readonly convergenceGapPercentagePoints: number;
+  /** Measured wall-clock runtime for this simulation batch. */
+  readonly executionTimeMs: number;
+  /** Measured simulation throughput for this batch. */
+  readonly simulationsPerSecond: number;
 }
 
 /**
  * Runs a seeded probabilistic simulation over the accepted national grid snapshot.
+ *
+ * The result reports estimator precision (95% confidence intervals), a simple
+ * half-sample stability check, and measured throughput. These are the appropriate
+ * quality/performance measures for Monte Carlo; there is no fabricated "accuracy %".
  */
 export function runMonteCarloSimulation(
   snapshot: NationalGridSnapshot,
   options: MonteCarloOptions = {},
 ): MonteCarloResult {
-  const simulations = options.simulations ?? DEFAULT_SIMULATION_COUNT;
+  const simulations = Math.max(1, Math.floor(options.simulations ?? DEFAULT_SIMULATION_COUNT));
   const seed = options.seed ?? DEFAULT_SEED;
+  const startedAt = performance.now();
   const random = createSeededRandom(seed);
   const points = runSimulationPoints(snapshot, simulations, random);
+  const elapsedMs = Math.max(0.01, performance.now() - startedAt);
 
-  return aggregateResults(points, simulations, seed);
+  return aggregateResults(points, simulations, seed, elapsedMs);
 }
 
 function runSimulationPoints(
@@ -137,11 +159,26 @@ function aggregateResults(
   points: readonly SimulationPoint[],
   simulations: number,
   seed: number,
+  elapsedMs: number,
 ): MonteCarloResult {
+  const blackoutEvents = points.filter((point) => point.blackoutEvent).length;
+  const blackoutProbability = calculateBlackoutProbability(points);
+  const expectedUnservedEnergyMwh = calculateExpectedUnservedEnergy(points);
+  const eueValues = points.map(
+    (point) => Math.max(0, -point.supplyDemandGapMw) * SIMULATION_INTERVAL_HOURS,
+  );
+  const blackoutCi95 = wilsonConfidenceInterval95(blackoutEvents, simulations);
+  const eueCi95 = meanConfidenceInterval95(eueValues);
+
   return {
     simulations,
     seed,
-    blackoutProbability: roundPercent(calculateBlackoutProbability(points)),
+    blackoutProbability: roundPercent(blackoutProbability),
+    blackoutProbabilityCi95: {
+      low: roundPercent(blackoutCi95.low),
+      high: roundPercent(blackoutCi95.high),
+      standardError: roundPercent(blackoutCi95.standardError),
+    },
     meanReserveMargin: roundPercent(mean(points, (point) => point.reserveMarginPercent)),
     meanSupplyDemandGapMw: roundMw(mean(points, (point) => point.supplyDemandGapMw)),
     expectedRenewableGenerationMw: roundMw(mean(points, (point) => point.renewableGenerationMw)),
@@ -149,19 +186,68 @@ function aggregateResults(
     renewableGenerationPercentiles: calculatePercentiles(
       points.map((point) => point.renewableGenerationMw),
     ),
-    lossOfLoadProbability: roundPercent(calculateBlackoutProbability(points)),
-    expectedUnservedEnergyMwh: roundMw(calculateExpectedUnservedEnergy(points)),
+    lossOfLoadProbability: roundPercent(blackoutProbability),
+    expectedUnservedEnergyMwh: roundMw(expectedUnservedEnergyMwh),
+    expectedUnservedEnergyCi95: {
+      low: roundMw(eueCi95.low),
+      high: roundMw(eueCi95.high),
+      standardError: roundMw(eueCi95.standardError),
+    },
+    convergenceGapPercentagePoints: roundPercent(calculateHalfSampleGap(points)),
+    executionTimeMs: roundTime(elapsedMs),
+    simulationsPerSecond: roundTime((simulations / elapsedMs) * 1000),
   };
 }
 
 function calculateBlackoutProbability(points: readonly SimulationPoint[]): number {
-  return (
-    (points.filter((point) => point.blackoutEvent).length / points.length) * PERCENT_DENOMINATOR
-  );
+  return points.length > 0
+    ? (points.filter((point) => point.blackoutEvent).length / points.length) * PERCENT_DENOMINATOR
+    : 0;
 }
 
 function calculateExpectedUnservedEnergy(points: readonly SimulationPoint[]): number {
   return mean(points, (point) => Math.max(0, -point.supplyDemandGapMw) * SIMULATION_INTERVAL_HOURS);
+}
+
+function calculateHalfSampleGap(points: readonly SimulationPoint[]): number {
+  if (points.length < 2) return 0;
+  const midpoint = Math.floor(points.length / 2);
+  const first = points.slice(0, midpoint);
+  const second = points.slice(midpoint);
+  return Math.abs(calculateBlackoutProbability(first) - calculateBlackoutProbability(second));
+}
+
+function wilsonConfidenceInterval95(successes: number, trials: number): ConfidenceInterval {
+  if (trials <= 0) return { low: 0, high: 0, standardError: 0 };
+  const p = successes / trials;
+  const z2 = CONFIDENCE_Z_95 ** 2;
+  const denominator = 1 + z2 / trials;
+  const center = (p + z2 / (2 * trials)) / denominator;
+  const margin =
+    (CONFIDENCE_Z_95 / denominator) *
+    Math.sqrt((p * (1 - p)) / trials + z2 / (4 * trials ** 2));
+  const standardError = Math.sqrt((p * (1 - p)) / trials) * PERCENT_DENOMINATOR;
+  return {
+    low: Math.max(0, center - margin) * PERCENT_DENOMINATOR,
+    high: Math.min(1, center + margin) * PERCENT_DENOMINATOR,
+    standardError,
+  };
+}
+
+function meanConfidenceInterval95(values: readonly number[]): ConfidenceInterval {
+  if (values.length === 0) return { low: 0, high: 0, standardError: 0 };
+  const average = mean(values, (value) => value);
+  const variance =
+    values.length > 1
+      ? values.reduce((sum, value) => sum + (value - average) ** 2, 0) / (values.length - 1)
+      : 0;
+  const standardError = Math.sqrt(variance / values.length);
+  const margin = CONFIDENCE_Z_95 * standardError;
+  return {
+    low: Math.max(0, average - margin),
+    high: average + margin,
+    standardError,
+  };
 }
 
 function calculatePercentiles(values: readonly number[]): PercentileSet {
@@ -273,6 +359,10 @@ function roundMw(value: number): number {
 
 function roundPercent(value: number): number {
   return Math.round(value * ROUND_PERCENT_SCALE) / ROUND_PERCENT_SCALE;
+}
+
+function roundTime(value: number): number {
+  return Math.round(value * ROUND_TIME_SCALE) / ROUND_TIME_SCALE;
 }
 
 function clamp(value: number, min: number, max: number): number {
