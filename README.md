@@ -1,25 +1,26 @@
 # ⚡ Grid Sentinel AI
 
-> **AI-Powered National Power Grid Digital Twin with Weather Intelligence, Monte Carlo Risk Simulation, Grid Optimization, Texas 2021 Replay and Gemini AI Decision Support**
+> **AI-assisted National Power Grid Digital Twin with Weather Intelligence, Monte Carlo Risk Simulation, Grid Optimization, Texas 2021 Replay and Gemini Decision Support**
 
 ---
 
 ## Overview
 
-Grid Sentinel AI is an intelligent power-grid digital twin that helps operators monitor, analyze and optimize a national electricity grid in real time.
+Grid Sentinel AI is a decision-support digital twin for studying power-grid resilience under changing demand, renewable availability and contingency conditions.
 
 The platform combines:
 
-- 🌤 Live weather forecasting
-- ⚡ National grid monitoring
-- 🎲 Monte Carlo risk simulation
+- 🌤 External weather inputs
+- ⚡ Modelled national-grid state and demand
+- 🎲 Seeded Monte Carlo risk simulation
 - 🤖 Gemini-powered AI assistant
-- 📈 Renewable generation forecasting
-- 🧠 Grid optimization
+- 📈 Renewable generation modelling
+- 🧠 Grid dispatch and optimization logic
 - 🇮🇳 India Digital Twin
 - 🇺🇸 Texas Winter Storm Uri 2021 replay
+- 🧊 Polar Research Station Digital Twin for SIH26061
 
-The objective is to improve grid resilience, reduce blackout risk and assist operators in making informed decisions during both normal and emergency operating conditions.
+The objective is to estimate risk, test scenarios and support operator decisions without claiming live utility telemetry or utility-grade SCADA control.
 
 ---
 
@@ -28,246 +29,243 @@ The objective is to improve grid resilience, reduce blackout risk and assist ope
 ## 🇮🇳 India Digital Twin
 
 - National grid visualization
-- State-wise monitoring
-- Live demand estimation
+- State-wise modelled monitoring
+- Demand estimation
 - Renewable generation tracking
 - Reserve margin calculation
-- Grid health monitoring
+- Grid health and contingency analysis
+
+The national network is a **reduced-order representative model**, not a complete physical model of India's transmission network.
 
 ---
 
 ## 🌦 Weather Intelligence
 
-- Weather-driven renewable forecasting
+- Weather-driven renewable modelling
 - Solar prediction
 - Wind prediction
-- Weather impact analysis
-- Cloud cover modelling
+- Cloud-cover impact modelling
+- External weather-data integration through Open-Meteo
 
 ---
 
-## 🎲 Monte Carlo Simulation
+## 🎲 Monte Carlo Simulation — Core Risk Engine
 
-Thousands of probabilistic scenarios are simulated to estimate:
+The system uses seeded probabilistic simulation to explore uncertainty in demand, solar, wind and battery availability.
 
-- Blackout probability
+It reports:
+
 - Loss of Load Probability (LOLP)
 - Expected Unserved Energy (EUE)
-- Renewable uncertainty
-- Demand uncertainty
+- Demand P05/P50/P95
+- Renewable-generation P05/P50/P95
+- 95% confidence interval for estimated LOLP
+- Half-sample stability gap as a simple convergence diagnostic
+- Measured simulation throughput
+
+**Important:** Monte Carlo is not a classifier, so the project does not claim a fabricated "accuracy %". Estimator precision, convergence stability and measured performance are the appropriate validation signals for this simulation engine.
 
 ---
 
 ## ⚙ Grid Optimization
 
-Optimization engine recommends:
+Decision logic evaluates:
 
 - Renewable dispatch
 - Grid balancing
 - Reserve allocation
-- Demand management
-- Reliability improvements
+- Demand response
+- Battery availability
+- Reliability and congestion conditions
 
 ---
 
 ## 🤖 Gemini AI Control Room
 
-Natural language interface for grid operators.
+Natural-language decision support for operators.
 
 Example questions:
 
-- What is today's blackout probability?
+- What is the current blackout risk?
 - Which state has the highest demand?
 - What is the reserve margin?
-- Compare today's grid with Texas 2021.
-- What was the replay peak demand?
-- Which hour had the highest blackout probability?
-- What recommendations do you have?
+- Compare the modelled grid with Texas 2021.
+- What recommendations reduce the current risk?
+
+Gemini is an advisory/explanation layer; the underlying grid calculations remain deterministic and probabilistic model outputs.
 
 ---
 
 ## 🇺🇸 Texas 2021 Replay
 
-Historical replay based on benchmark datasets.
+Historical replay based on included benchmark/replay data.
 
 Includes:
 
 - ERCOT demand
 - Generation
 - Weather observations
-- Emergency alerts
+- Emergency conditions
 - Replay statistics
 - Peak demand
-- Peak renewable generation
-- Worst blackout period
+- Renewable-generation behaviour
 
-Operators can compare current grid conditions against Winter Storm Uri.
+---
+
+## 🧊 Polar Research Station Digital Twin
+
+A separate SIH26061 deployment surface for an isolated polar microgrid.
+
+Scenarios include:
+
+- Nominal weather
+- Polar storm
+- Low-light
+- Wind derating
+
+The model tracks critical/deferrable loads, solar, wind, battery SOC, backup generation, fuel and reserve targets across 5,000 seeded scenarios.
+
+Inputs are explicitly **synthetic prototype assumptions**, not live polar-station telemetry.
 
 ---
 
 # System Architecture
 
-```
-
-                NOAA Weather
-                      │
-                      ▼
-             Weather Forecast Engine
-                      │
-                      ▼
-             Renewable Forecast Model
-                      │
-                      ▼
-      Live National Grid Digital Twin
-                      │
-      ┌───────────────┼──────────────┐
-      ▼               ▼              ▼
-
-Monte Carlo Grid Optimizer Texas Replay
-Simulation
-
-      └───────────────┼──────────────┘
-                      ▼
-             Gemini AI Control Room
-                      ▼
-              Operator Dashboard
-
+```text
+Weather Inputs
+      │
+      ▼
+Demand + Renewable Models
+      │
+      ▼
+National Grid Snapshot
+      │
+ ┌────┼───────────────┐
+ ▼    ▼               ▼
+Monte Carlo   Grid Engine   Texas Replay
+Risk Engine   + Contingency
+ └────┼───────────────┘
+      ▼
+Dispatch / Decision Logic
+      │
+      ▼
+Gemini AI Control Room
+      │
+      ▼
+Operator Dashboard
 ```
 
 ---
 
 # Technology Stack
 
-## Frontend
+## Frontend / application
 
 - React
 - TypeScript
 - Vite
+- TanStack Start / Router
 - Tailwind CSS
 
-## Backend Logic
+## Decision engine
 
-- TypeScript
-- Gemini API
-- Monte Carlo Simulation
+- Seeded Monte Carlo simulation
+- DC power-flow model
+- N-1 contingency analysis
+- Reserve and reliability calculations
+- Fuel/dispatch modelling
 
-## Data
+## AI
 
-- ERCOT benchmark datasets
-- NOAA weather observations
-- Texas replay datasets
+- Gemini API for natural-language decision support
 
----
+## Verification
 
-# Project Structure
-
-```
-
-src/
-
-├── components/
-├── data/
-│   └── texas-uri/
-├── hooks/
-├── routes/
-├── services/
-│   ├── gemini-service.ts
-│   ├── gemini-control-room.ts
-│   ├── monte-carlo.ts
-│   ├── weather-service.ts
-│   ├── texas-replay.ts
-│   ├── texas-replay-data.ts
-│   └── grid-optimizer.ts
-
-```
-
----
-
-# AI Pipeline
-
-Weather
-↓
-
-Renewable Forecast
-
-↓
-
-National Grid Snapshot
-
-↓
-
-Monte Carlo Simulation
-
-↓
-
-Grid Optimization
-
-↓
-
-Texas Replay Comparison
-
-↓
-
-Gemini AI Response
-
----
-
-# Example Operator Queries
-
-```
-
-What is today's reserve margin?
-
-Compare today's grid with Texas 2021.
-
-What hour had the highest blackout probability?
-
-Which state currently has the highest demand?
-
-Show renewable generation.
-
-Recommend actions to reduce blackout risk.
-
-```
+- Dependency-free Python backend checks
+- GitHub CI
 
 ---
 
 # Installation
 
 ```bash
-git clone https://github.com/SHIVAIN-MITTAL16/montecarlo_systems_hackathon_project.git
-
-cd futuregrid-ai-main
-
-npm install
-
+git clone https://github.com/SHIVAIN-MITTAL16/grid-sentinel-ai.git
+cd grid-sentinel-ai
+npm ci
 npm run dev
+```
+
+Production build:
+
+```bash
+npm run build
+npm run start
 ```
 
 ---
 
 # Environment Variables
 
-Create:
+For Gemini decision support, configure the key only on the server/deployment environment:
 
-```
-.env.local
-```
-
-```
+```text
 GEMINI_API_KEY=YOUR_API_KEY
+```
+
+Never commit the key to Git.
+
+---
+
+# Render Deployment
+
+The repository includes a `render.yaml` Blueprint for Render's Node web-service deployment.
+
+Configuration uses:
+
+```text
+Build: npm ci && npm run build
+Start: npm run start
+Nitro preset: render-com
+Host: 0.0.0.0
+```
+
+Render is the intended production deployment target for this project. The service should be connected to the `grid-sentinel-ai` repository and the production branch only after the integration branch has passed verification.
+
+---
+
+# Verification
+
+Run the Python checks from the repository root:
+
+```bash
+python -m unittest discover -s backend -p "test_*.py" -v
+```
+
+Run the local verification server:
+
+```bash
+python backend/main.py
+```
+
+Available verification endpoints:
+
+```text
+GET /health
+GET /fuel-optimization
+GET /polar-simulation?scenario=nominal
 ```
 
 ---
 
 # Future Enhancements
 
-- Battery dispatch optimization
-- PMU integration
-- SCADA connectivity
-- Multi-country digital twins
-- Reinforcement Learning dispatch
-- Carbon emission optimization
+- Historical load/renewable backtesting
+- Higher-fidelity network data
+- Formal mathematical optimization solver
+- Battery degradation modelling
+- PMU/SCADA integrations when real data is available
+- Larger validated weather/load datasets
+- Additional polar-station scenarios
 
 ---
 
@@ -285,46 +283,3 @@ MonteCarlo Systems
 # License
 
 MIT License
-
----
-
-
-⭐ If you like this project, consider giving it a star.
-
-⭐ If you like this project, consider giving it a star.
-
-## 📸 Screenshots
-
-### Dashboard
-
-![Dashboard](screenshots/dashboard.png)
-
----
-
-### AI Control Room
-
-![Control Room](screenshots/ai-control-room.png)
-
----
-
-### India Digital Twin
-
-![India Map](screenshots/India-map.png)
-
----
-
-### Texas 2021 Replay
-
-![Texas Replay](screenshots/texas-replay.png)
-
----
-
-### Monte Carlo Simulation
-
-![Simulation](screenshots/monte-carlo.png)
-
----
-
-### Crisis Lab Simulation
-
-![Simulation](screenshots/crisis-lab.png)
