@@ -1,0 +1,15 @@
+services:
+  - type: web
+    runtime: node
+    name: grid-sentinel-ai
+    branch: sih26061-polar-integration
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    healthCheckPath: /
+    envVars:
+      - key: NITRO_PRESET
+        value: render-com
+      - key: HOST
+        value: 0.0.0.0
+      - key: NODE_ENV
+        value: production
