@@ -1,6 +1,7 @@
 import type { getNationalGridSnapshot } from "./grid-snapshot";
 import type { optimizeGridDispatch } from "./grid-optimizer";
 import type { runMonteCarloSimulation } from "./monte-carlo";
+import { getPolarStationState, optimizePolarDispatch, runPolarRiskSimulation } from "./polar-station";
 
 declare const process: { env: Record<string, string | undefined> };
 
@@ -14,20 +15,33 @@ const GEMINI_TIMEOUT_MS = 20_000;
 const GEMINI_MAX_OUTPUT_TOKENS = 900;
 
 const SYSTEM_PROMPT = `
-You are Grid Sentinel AI, an expert National Power Grid Operations Engineer.
+You are Grid Sentinel AI, an expert energy-systems decision-support assistant for the Grid Sentinel AI prototype.
 
-Rules:
-- Never invent numerical values.
-- Never fabricate measurements, telemetry, forecasts, probabilities, or recommendations.
-- Use only the supplied backend data.
-- If information is unavailable, explicitly say it is unavailable.
-- Explain why recommendations are made.
-- Be concise but technically accurate.
-- Answer only questions related to power grids, renewable energy, weather impact, Monte Carlo simulation, grid optimization, blackout prevention, or electrical infrastructure.
-- If asked an unrelated question, politely refuse and explain that you are limited to Grid Sentinel analysis.
-- If Texas Replay data exists, compare the historical replay with today's live national grid using only supplied backend data.
-- When comparing Texas Replay and today's Indian grid, explain similarities, differences, and why today's grid is safer or riskier using only supplied backend data.
-- If Texas Replay data is unavailable, say so explicitly.
+Knowledge scope:
+- National grid snapshot, state-level risk, renewable penetration, reserves, batteries and dispatch actions.
+- Monte Carlo risk analysis, including LOLP, EUE, confidence intervals, convergence/stability and simulation performance.
+- Polar research-station digital twin, including critical/deferrable load, solar/wind availability, battery reserve, backup generation, weather scenarios and modeled baseline-vs-Sentinel impact.
+- Texas 2021 historical replay when supplied. Treat replay data as historical analysis, not live telemetry.
+- Grid optimization and contingency/risk concepts represented in the supplied backend context.
+
+Strict truth rules:
+- Use only the supplied backend context for numerical claims.
+- Never invent telemetry, forecasts, probabilities, savings, costs, emissions, dates, or equipment status.
+- Clearly distinguish modeled/synthetic prototype results from historical or live data.
+- Do not call Monte Carlo estimator precision "accuracy".
+- Do not call heuristic optimization a mathematically proven global optimum.
+- If a requested fact is not in the context, say "Not available in the current Grid Sentinel context."
+- Do not treat the prototype's polar-station inputs as live station telemetry.
+- Explain the evidence behind every recommendation.
+
+Answer structure:
+1. **Assessment** — one or two sentences answering the question directly.
+2. **Evidence** — cite the relevant supplied metrics/conditions; keep units.
+3. **Recommended action** — concrete operator action and why it follows from the evidence.
+4. **Expected impact** — only when the context contains a baseline-vs-Sentinel comparison; report the supplied modeled change and label it modeled.
+5. **Data status** — state whether the answer uses prototype/synthetic, live national snapshot, or historical replay data.
+
+For simple factual questions, keep the same headings but make each section brief. Never hide uncertainty.
 `.trim();
 
 interface GeminiGridAssistantInput {
@@ -97,9 +111,12 @@ export async function askGeminiGridAssistant(
     content,
     sources: [
       "Gemini 2.5 Flash",
-      "Live National Grid Snapshot",
+      "Grid Sentinel backend context",
+      "National Grid Snapshot",
       "Monte Carlo Engine",
       "Grid Optimizer",
+      "Polar Station Digital Twin",
+      ...(input.texasReplay ? ["Texas 2021 Historical Replay"] : []),
     ],
   };
 }
@@ -128,6 +145,7 @@ function buildUserPrompt(input: GeminiGridAssistantInput): string {
   return [
     "Answer the operator question using only this backend-generated Grid Sentinel context.",
     "Do not calculate new grid values. Do not add measurements that are not present.",
+    "Use the requested answer structure exactly unless the question is unrelated, in which case refuse briefly.",
     "",
     `Operator question: ${input.question}`,
     "",
@@ -142,8 +160,41 @@ function buildGridContext(input: GeminiGridAssistantInput) {
     stateRiskSummary: input.snapshot.states.map(buildStateSummary),
     monteCarloResult: input.monteCarlo,
     gridOptimizerResult: buildOptimizerSummary(input.optimizer),
+    polarStationDigitalTwin: buildPolarSummary(),
     ...(input.texasReplay ? { TexasReplaySummary: input.texasReplay } : {}),
   };
+}
+
+function buildPolarSummary() {
+  return ["nominal", "polar-storm", "low-light", "wind-derating"].map((scenario) => {
+    const state = getPolarStationState(scenario as Parameters<typeof getPolarStationState>[0]);
+    const risk = runPolarRiskSimulation(state);
+    const optimized = optimizePolarDispatch(state);
+    return {
+      scenario,
+      state,
+      baselineRisk: risk,
+      sentinelDispatch: optimized,
+      modeledFuelSavingPercent: percentReduction(risk.fuelUsedLitres, optimized.fuelUsedLitres),
+      modeledShortageRiskReductionPercent: percentReduction(
+        risk.shortageProbabilityPercent,
+        optimized.shortageProbabilityPercent,
+      ),
+      modeledEueReductionPercent: percentReduction(
+        risk.expectedUnservedEnergyKwh,
+        optimized.expectedUnservedEnergyKwh,
+      ),
+      fuelCostAssumptionInrPerLitre: 95,
+      co2AssumptionKgPerLitre: 2.68,
+      dieselConsumptionAssumptionLitresPerKwh: 0.29,
+      dataStatus: "Synthetic prototype inputs; modeled decision-support comparison, not field measurements.",
+    };
+  });
+}
+
+function percentReduction(baseline: number, optimized: number): number | null {
+  if (baseline <= 0) return null;
+  return Math.round(((baseline - optimized) / baseline) * 1000) / 10;
 }
 
 function buildNationalSummary(snapshot: NationalGridSnapshot) {
