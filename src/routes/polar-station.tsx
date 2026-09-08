@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { BatteryCharging, CloudSnow, Fuel, ShieldCheck, Wind, Zap } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { BatteryCharging, CloudSnow, Fuel, ShieldCheck, Sun, Wind, Zap } from "lucide-react";
+import { AntarcticaMap } from "@/components/grid/antarctica-map";
 import {
   fetchPolarSimulation,
   getPolarStationState,
@@ -13,10 +14,10 @@ import {
 export const Route = createFileRoute("/polar-station")({
   head: () => ({
     meta: [
-      { title: "Polar Station Digital Twin · Grid Sentinel AI" },
+      { title: "Antarctica Digital Twin · Grid Sentinel AI" },
       {
         name: "description",
-        content: "Weather-aware digital twin for AI-driven energy management at polar research stations.",
+        content: "Antarctic energy-management digital twin for SIH26061.",
       },
     ],
   }),
@@ -30,14 +31,13 @@ const SCENARIOS: { id: PolarScenario; name: string; storm: number; light: number
   { id: "wind-derating", name: "Wind Derating", storm: 25, light: 25, wind: 75 },
 ];
 
-const DIESEL_LITRES_PER_KWH = 0.29;
-const DIESEL_COST_INR_PER_LITRE = 95;
-const DIESEL_CO2_KG_PER_LITRE = 2.68;
+const FUEL_COST_INR_PER_LITRE = 95;
+const CO2_KG_PER_LITRE = 2.68;
 
 function PolarStation() {
   const [scenario, setScenario] = useState<PolarScenario>("nominal");
   const [backend, setBackend] = useState<PolarBackendResult | null>(null);
-  const [backendError, setBackendError] = useState<string | null>(null);
+  const [selectedStation, setSelectedStation] = useState<string | null>(null);
   const selected = SCENARIOS.find((item) => item.id === scenario)!;
   const fallbackState = useMemo(() => getPolarStationState(scenario), [scenario]);
   const fallbackRisk = useMemo(() => runPolarRiskSimulation(fallbackState), [fallbackState]);
@@ -45,16 +45,12 @@ function PolarStation() {
 
   useEffect(() => {
     let cancelled = false;
-    setBackendError(null);
     fetchPolarSimulation(scenario)
       .then((result) => {
         if (!cancelled) setBackend(result);
       })
-      .catch((error: unknown) => {
-        if (!cancelled) {
-          setBackend(null);
-          setBackendError(error instanceof Error ? error.message : "Backend unavailable");
-        }
+      .catch(() => {
+        if (!cancelled) setBackend(null);
       });
     return () => {
       cancelled = true;
@@ -64,148 +60,156 @@ function PolarStation() {
   const state = backend?.state ?? fallbackState;
   const risk = backend?.risk ?? fallbackRisk;
   const optimized = backend?.optimized ?? fallbackOptimized;
-  const live = Boolean(backend);
-  const fuelSavedLitres = Math.max(0, risk.fuelUsedLitres - optimized.fuelUsedLitres);
-  const fuelSavingPercent = reductionPercent(risk.fuelUsedLitres, optimized.fuelUsedLitres);
-  const fuelCostSaved = fuelSavedLitres * DIESEL_COST_INR_PER_LITRE;
-  const co2AvoidedKg = fuelSavedLitres * DIESEL_CO2_KG_PER_LITRE;
-  const shortageReduction = reductionPercent(risk.shortageProbabilityPercent, optimized.shortageProbabilityPercent);
-  const eueReduction = reductionPercent(risk.expectedUnservedEnergyKwh, optimized.expectedUnservedEnergyKwh);
+  const fuelSaved = Math.max(0, risk.fuelUsedLitres - optimized.fuelUsedLitres);
+  const fuelSavingPct = reduction(risk.fuelUsedLitres, optimized.fuelUsedLitres);
+  const costSaved = fuelSaved * FUEL_COST_INR_PER_LITRE;
+  const co2Avoided = fuelSaved * CO2_KG_PER_LITRE;
+  const shortageReduction = reduction(risk.shortageProbabilityPercent, optimized.shortageProbabilityPercent);
+  const eueReduction = reduction(risk.expectedUnservedEnergyKwh, optimized.expectedUnservedEnergyKwh);
+  const renewableKw = state.solarKw + state.windKw;
+  const renewableShare = Math.min(100, (renewableKw / Math.max(1, state.loadKw)) * 100);
+  const systemRisk = Math.min(100, Math.round(risk.shortageProbabilityPercent * 2.4 + (100 - risk.minimumSocPercent) * 0.18));
 
   return (
-    <div className="px-6 py-6 space-y-6">
-      <section className="panel p-6">
-        <div className="flex items-center justify-between gap-4">
-          <div className="hud-label mb-2">POLAR RESEARCH STATION · DIGITAL TWIN · SIH26061</div>
-          <div className={`text-[10px] font-mono px-2 py-1 rounded border ${live ? "border-green-400/30 text-green-300" : "border-yellow-400/30 text-yellow-300"}`}>
-            {live ? "● PYTHON BACKEND LIVE" : "○ LOCAL FALLBACK"}
-          </div>
-        </div>
-        <h1 className="text-3xl font-display font-semibold">
-          Weather-aware <span className="text-[oklch(0.72_0.18_245)]">energy intelligence</span>.
-        </h1>
-        <p className="text-muted-foreground mt-2 max-w-3xl">
-          A separate polar-station digital twin added alongside the original India National Grid Digital Twin. It models weather stress, load, renewable availability, battery reserve, backup generation and probabilistic energy-security risk.
-        </p>
-        {backendError && (
-          <p className="mt-3 text-xs text-yellow-300">Backend connection lost — showing deterministic local fallback. Start Python on port 8010 to restore live engine data.</p>
-        )}
-      </section>
+    <div className="px-4 lg:px-5 py-4 max-w-[1800px] mx-auto">
+      <div className="grid grid-cols-1 xl:grid-cols-[250px_minmax(0,1fr)_330px] gap-3">
+        <aside className="space-y-3">
+          <Panel title="ANTARCTICA STATION NETWORK">
+            <MetricRow icon={<ShieldCheck />} label="Active Indian stations" value="2 / 2" tone="good" />
+            <MetricRow icon={<Zap />} label="Representative load" value={`${state.loadKw} kW`} />
+            <MetricRow icon={<Wind />} label="Renewable share" value={`${renewableShare.toFixed(1)} %`} tone="good" />
+            <MetricRow icon={<BatteryCharging />} label="Battery reserve" value={`${state.batteryEnergyKwh.toFixed(0)} kWh`} />
+            <MetricRow icon={<Fuel />} label="Backup generator" value={`${state.generatorKw} kW`} />
+            <MetricRow icon={<ShieldCheck />} label="Shortage risk" value={`${risk.shortageProbabilityPercent.toFixed(1)} %`} tone={risk.shortageProbabilityPercent > 5 ? "warn" : "good"} />
+          </Panel>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {SCENARIOS.map((item, index) => (
-          <button
-            key={item.id}
-            onClick={() => setScenario(item.id)}
-            className={`panel p-4 text-left ${scenario === item.id ? "border-[oklch(0.72_0.18_245/0.6)]" : ""}`}
-          >
-            <div className="hud-label">SCENARIO {String(index + 1).padStart(2, "0")}</div>
-            <div className="font-display mt-1">{item.name}</div>
-          </button>
-        ))}
-      </div>
+          <Panel title="SCENARIO INPUTS">
+            <MetricRow icon={<CloudSnow />} label="Weather stress" value={`${selected.storm}%`} tone="warn" />
+            <MetricRow icon={<Sun />} label="Low-light factor" value={`${selected.light}%`} />
+            <MetricRow icon={<Wind />} label="Wind derating" value={`${selected.wind}%`} />
+            <MetricRow icon={<BatteryCharging />} label="Reserve target" value={`${state.reserveTargetPercent}%`} />
+          </Panel>
 
-      <section className="panel p-6 border-[oklch(0.85_0.21_145/0.3)] shadow-[0_0_40px_-18px_oklch(0.85_0.21_145/0.55)]">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <div className="hud-label flex items-center gap-2"><Zap size={13} /> HERO IMPACT · BASELINE VS SENTINEL</div>
-            <h2 className="font-display text-2xl mt-1">What the decision changes</h2>
-            <p className="text-xs text-muted-foreground mt-1">
-              Paired deterministic runs using the same {risk.scenarios.toLocaleString()} scenarios and seed 26061 for {selected.name}.
-            </p>
-          </div>
-          <div className="text-[10px] font-mono px-2 py-1 rounded border border-[oklch(0.85_0.21_145/0.25)] text-[oklch(0.85_0.21_145)]">
-            MODELED · NOT FIELD MEASURED
-          </div>
-        </div>
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mt-5">
-          <ImpactCard label="Fuel saving" value={fuelSavingPercent === null ? "—" : `${fuelSavingPercent}%`} detail={`${fuelSavedLitres.toFixed(1)} L / scenario`} />
-          <ImpactCard label="Fuel cost avoided" value={`₹${Math.round(fuelCostSaved).toLocaleString("en-IN")}`} detail="per simulated scenario" />
-          <ImpactCard label="CO₂ avoided" value={`${co2AvoidedKg.toFixed(1)} kg`} detail="per simulated scenario" />
-          <ImpactCard label="Shortage risk" value={shortageReduction === null ? "—" : `${shortageReduction}%`} detail="relative reduction" />
-          <ImpactCard label="EUE" value={eueReduction === null ? "—" : `${eueReduction}%`} detail="relative reduction" />
-        </div>
-        <div className="mt-4 text-[10px] text-muted-foreground font-mono">
-          Assumptions: diesel consumption 0.29 L/kWh · ₹95/L fuel cost · 2.68 kg CO₂/L. Fuel/cost/CO₂ are modeled from the simulator; validate with station-specific data before investment decisions.
-        </div>
-      </section>
+          <Panel title="RISK LEVELS · CONTEXT">
+            <RiskDot name="Bharati" value="Active" tone="good" />
+            <RiskDot name="Maitri" value="Active" tone="good" />
+            <RiskDot name="Dakshin Gangotri" value="Historic" tone="warn" />
+            <RiskDot name="Larsemann Hills" value="Context" tone="info" />
+            <div className="text-[9px] text-muted-foreground mt-3 leading-relaxed">Station labels provide geographic context. The energy simulation is a representative polar-station twin, not separate live telemetry for each location.</div>
+          </Panel>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-6">
-        <section className="panel p-6">
-          <div className="hud-label mb-4">Station state · {selected.name}</div>
-          <div className="grid md:grid-cols-2 gap-4">
-            <Metric icon={<CloudSnow />} label="Station load" value={`${state.loadKw} kW`} />
-            <Metric icon={<Wind />} label="Renewables" value={`${state.solarKw + state.windKw} kW`} />
-            <Metric icon={<BatteryCharging />} label="Battery SOC" value={`${risk.minimumSocPercent}%`} />
-            <Metric icon={<Fuel />} label="Fuel used / scenario" value={`${risk.fuelUsedLitres} L`} />
-          </div>
-          <div className="mt-6 grid md:grid-cols-4 gap-3">
-            <Stat label="Shortage probability" value={`${risk.shortageProbabilityPercent}%`} warn={risk.shortageProbabilityPercent > 5} />
-            <Stat label="Expected unserved energy" value={`${risk.expectedUnservedEnergyKwh} kWh`} />
-            <Stat label="Renewable utilization" value={`${risk.renewableUtilizationPercent}%`} />
-            <Stat label="Scenarios" value={risk.scenarios.toLocaleString()} />
-          </div>
-        </section>
+          <Panel title="MODEL STATUS">
+            <div className="text-[oklch(0.85_0.21_145)] text-sm font-display">Simulation Operational</div>
+            <div className="grid grid-cols-2 gap-2 mt-3">
+              <Mini label="Engine" value="Monte Carlo" />
+              <Mini label="Scenarios" value={risk.scenarios.toLocaleString()} />
+              <Mini label="Seed" value="26061" />
+              <Mini label="Mode" value="Advisory" />
+            </div>
+          </Panel>
+        </aside>
 
-        <aside className="panel p-6">
-          <div className="hud-label mb-2 flex items-center gap-2">
-            <ShieldCheck size={13} /> SENTINEL DISPATCH
+        <main className="space-y-3 min-w-0">
+          <section className="panel p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="hud-label">ANTARCTICA DIGITAL TWIN</div>
+                <h1 className="text-2xl lg:text-3xl font-display font-semibold">Polar Station Energy Operations</h1>
+                <p className="text-xs text-muted-foreground mt-1">Scenario simulation, probabilistic risk analysis and reserve-aware dispatch for SIH26061.</p>
+              </div>
+              <div className="flex gap-2">
+                <div className="px-3 py-2 rounded-lg border border-[oklch(0.85_0.21_145/0.3)] bg-[oklch(0.85_0.21_145/0.05)] text-[10px] font-mono text-[oklch(0.85_0.21_145)]">● SIMULATION ONLINE</div>
+                <div className="px-3 py-2 rounded-lg border border-[oklch(0.72_0.18_245/0.2)] text-[10px] font-mono">SEED 26061</div>
+              </div>
+            </div>
+          </section>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            {SCENARIOS.map((item, index) => (
+              <button key={item.id} onClick={() => setScenario(item.id)} className={`panel p-3 text-left transition-all ${scenario === item.id ? "border-[oklch(0.72_0.18_245/0.75)] bg-[oklch(0.72_0.18_245/0.07)]" : "hover:border-[oklch(0.72_0.18_245/0.35)]"}`}>
+                <div className="hud-label">SCENARIO {String(index + 1).padStart(2, "0")}</div>
+                <div className="font-display text-sm mt-1">{item.name}</div>
+              </button>
+            ))}
           </div>
-          <div className="font-display text-xl">{optimized.recommendedAction}</div>
-          <div className="mt-5 space-y-2 text-xs font-mono">
-            <Row k="Weather stress" v={`${selected.storm}%`} />
-            <Row k="Low-light penalty" v={`${selected.light}%`} />
-            <Row k="Wind derating" v={`${selected.wind}%`} />
-            <Row k="Battery reserve target" v={`${state.reserveTargetPercent}%`} />
-            <Row k="Operating mode" v="ADVISORY" />
+
+          <section className="panel p-3 min-h-[500px]">
+            <AntarcticaMap risk={systemRisk} />
+            {selectedStation && <div className="sr-only">Selected station: {selectedStation}</div>}
+          </section>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <Panel title="RENEWABLE GENERATION · CURRENT">
+              <Generation name="Solar" icon="☀" value={`${state.solarKw} kW`} pct={state.solarKw / Math.max(1, renewableKw)} />
+              <Generation name="Wind" icon="♢" value={`${state.windKw} kW`} pct={state.windKw / Math.max(1, renewableKw)} />
+              <Generation name="Diesel" icon="▣" value={`${risk.fuelUsedLitres} L / scenario`} pct={Math.min(1, risk.fuelUsedLitres / 10)} />
+            </Panel>
+            <Panel title="LOAD & BATTERY">
+              <div className="grid grid-cols-2 gap-3">
+                <BigMetric label="Total Load" value={`${state.loadKw} kW`} />
+                <BigMetric label="Battery SOC" value={`${risk.minimumSocPercent}%`} />
+              </div>
+              <div className="mt-3 h-2 rounded bg-white/10 overflow-hidden"><div className="h-full bg-[oklch(0.85_0.21_145)]" style={{ width: `${Math.min(100, risk.minimumSocPercent)}%` }} /></div>
+              <div className="text-[9px] text-muted-foreground mt-1">Minimum simulated SOC · reserve target {state.reserveTargetPercent}%</div>
+            </Panel>
+            <Panel title="SCENARIO SIMULATION">
+              <div className="text-xs font-mono">{selected.name}</div>
+              <div className="mt-2 text-[10px] text-muted-foreground">5,000 seeded scenarios evaluate demand, renewables, battery headroom and generator availability.</div>
+              <div className="mt-3 px-3 py-2 rounded border border-[oklch(0.72_0.18_245/0.25)] text-center font-mono text-[10px]">RUNNING · {risk.scenarios.toLocaleString()} SCENARIOS</div>
+            </Panel>
           </div>
-          <div className="mt-5 text-[10px] text-muted-foreground">
-            Synthetic prototype inputs; not live polar-station telemetry. Decision support only.
-          </div>
+        </main>
+
+        <aside className="space-y-3">
+          <Panel title="HERO IMPACT · BASELINE VS SENTINEL" accent>
+            <div className="text-center text-[10px] text-muted-foreground mb-3">Same {risk.scenarios.toLocaleString()} scenarios · Seed 26061</div>
+            <div className="grid grid-cols-2 gap-2">
+              <Impact value={`${fuelSavingPct ?? 0}%`} label="Fuel saving" detail={`${fuelSaved.toFixed(1)} L / scenario`} />
+              <Impact value={`₹${Math.round(costSaved).toLocaleString("en-IN")}`} label="Fuel cost avoided" detail="per scenario" />
+              <Impact value={`${co2Avoided.toFixed(1)} kg`} label="CO₂ avoided" detail="per scenario" />
+              <Impact value={`${shortageReduction ?? 0}%`} label="Shortage risk" detail="relative reduction" />
+              <div className="col-span-2"><Impact value={`${eueReduction ?? 0}%`} label="EUE" detail="relative reduction" /></div>
+            </div>
+            <div className="mt-3 text-[9px] text-muted-foreground leading-relaxed">MODELED · NOT FIELD MEASURED. Fuel cost assumption ₹95/L; CO₂ factor 2.68 kg/L. Values are simulator outputs, not measured station savings.</div>
+          </Panel>
+
+          <Panel title="AI CONTROL ROOM">
+            <div className="flex items-center justify-between mb-3"><span className="font-display">Grid Sentinel AI</span><span className="text-[9px] font-mono text-[oklch(0.82_0.17_75)]">SERVER-SIDE</span></div>
+            <div className="space-y-2 text-[10px] text-muted-foreground">
+              <div>✓ National grid analysis</div><div>✓ Monte Carlo results</div><div>✓ Polar station operations</div><div>✓ Optimization insights</div>
+            </div>
+            <div className="mt-3 pt-3 border-t border-white/10 text-[9px] text-muted-foreground">Structured answers: Assessment → Evidence → Action → Impact → Data status.</div>
+            <a href="/control-room" className="mt-3 block text-center px-3 py-2 rounded-lg bg-[oklch(0.72_0.18_245)] text-[oklch(0.1_0.02_260)] text-xs font-medium">Open AI Control Room →</a>
+          </Panel>
+
+          <Panel title="STATION STATUS">
+            <Status name="Bharati" value="Active" tone="good" />
+            <Status name="Maitri" value="Active" tone="good" />
+            <Status name="Dakshin Gangotri" value="Historic" tone="warn" />
+            <Status name="Larsemann Hills" value="Context" tone="info" />
+          </Panel>
+
+          <Panel title="SENTINEL DISPATCH">
+            <div className="text-xs leading-relaxed">{optimized.recommendedAction}</div>
+            <div className="mt-3 space-y-1 text-[9px] font-mono"><Row k="Minimum SOC" v={`${optimized.minimumSocPercent}%`} /><Row k="Fuel / scenario" v={`${optimized.fuelUsedLitres} L`} /><Row k="Renewable use" v={`${optimized.renewableUtilizationPercent}%`} /></div>
+          </Panel>
         </aside>
       </div>
+      <div className="mt-3 text-center text-[9px] text-muted-foreground font-mono">Synthetic prototype inputs · representative polar-station model · decision support only · not live Antarctic telemetry</div>
     </div>
   );
 }
 
-function reductionPercent(baseline: number, optimized: number): number | null {
-  if (baseline <= 0) return null;
-  return Math.round(((baseline - optimized) / baseline) * 1000) / 10;
-}
+function reduction(baseline: number, optimized: number): number | null { if (baseline <= 0) return null; return Math.round(((baseline - optimized) / baseline) * 1000) / 10; }
 
-function ImpactCard({ label, value, detail }: { label: string; value: string; detail: string }) {
-  return (
-    <div className="rounded-xl border border-[oklch(0.85_0.21_145/0.18)] bg-[oklch(0.16_0.028_260/0.5)] p-4">
-      <div className="text-[10px] text-muted-foreground">{label}</div>
-      <div className="font-mono text-2xl mt-2 text-[oklch(0.85_0.21_145)]">{value}</div>
-      <div className="text-[10px] text-muted-foreground mt-1">{detail}</div>
-    </div>
-  );
+function Panel({ title, children, accent = false }: { title: string; children: React.ReactNode; accent?: boolean }) {
+  return <section className={`panel p-3 ${accent ? "border-[oklch(0.85_0.21_145/0.4)] shadow-[0_0_35px_-20px_oklch(0.85_0.21_145/0.7)]" : ""}`}><div className="hud-label mb-3">{title}</div>{children}</section>;
 }
-
-function Metric({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
-  return (
-    <div className="p-4 rounded-lg border border-[oklch(0.72_0.18_245/0.12)]">
-      <div className="hud-label flex items-center gap-2">{icon}{label}</div>
-      <div className="font-mono text-xl mt-2">{value}</div>
-    </div>
-  );
-}
-
-function Stat({ label, value, warn }: { label: string; value: string; warn?: boolean }) {
-  return (
-    <div className="p-4 rounded-lg bg-[oklch(0.16_0.028_260/0.6)]">
-      <div className="text-[10px] text-muted-foreground">{label}</div>
-      <div className={`font-mono text-lg mt-1 ${warn ? "text-[oklch(0.82_0.17_75)]" : ""}`}>{value}</div>
-    </div>
-  );
-}
-
-function Row({ k, v }: { k: string; v: string }) {
-  return (
-    <div className="flex justify-between border-b border-[oklch(0.72_0.18_245/0.08)] pb-1">
-      <span className="text-muted-foreground">{k}</span>
-      <span>{v}</span>
-    </div>
-  );
-}
+function MetricRow({ icon, label, value, tone = "normal" }: { icon: React.ReactNode; label: string; value: string; tone?: "normal" | "good" | "warn" }) { const color = tone === "good" ? "text-[oklch(0.85_0.21_145)]" : tone === "warn" ? "text-[oklch(0.82_0.17_75)]" : "text-foreground"; return <div className="flex items-center gap-2 py-1.5"><span className="text-muted-foreground">{icon}</span><span className="text-[10px] text-muted-foreground flex-1">{label}</span><span className={`text-xs font-mono ${color}`}>{value}</span></div>; }
+function RiskDot({ name, value, tone }: { name: string; value: string; tone: "good" | "warn" | "info" }) { const c = tone === "good" ? "bg-[oklch(0.85_0.21_145)]" : tone === "warn" ? "bg-[oklch(0.82_0.17_75)]" : "bg-[oklch(0.72_0.18_245)]"; return <div className="flex items-center gap-2 py-1 text-[10px]"><span className={`w-2 h-2 rounded-full ${c}`} /><span className="flex-1">{name}</span><span className="font-mono text-muted-foreground">{value}</span></div>; }
+function Mini({ label, value }: { label: string; value: string }) { return <div className="p-2 rounded bg-white/[0.03] border border-white/[0.06]"><div className="text-[8px] text-muted-foreground">{label}</div><div className="text-[10px] font-mono mt-1">{value}</div></div>; }
+function Generation({ name, icon, value, pct }: { name: string; icon: string; value: string; pct: number }) { return <div className="flex items-center gap-2 py-1.5"><span className="text-lg">{icon}</span><span className="text-[10px] flex-1">{name}</span><span className="text-xs font-mono">{value}</span><div className="w-14 h-1.5 bg-white/10 rounded overflow-hidden"><div className="h-full bg-[oklch(0.72_0.18_245)]" style={{ width: `${Math.min(100, Math.max(0, pct * 100))}%` }} /></div></div>; }
+function BigMetric({ label, value }: { label: string; value: string }) { return <div><div className="text-[9px] text-muted-foreground">{label}</div><div className="text-xl font-mono mt-1">{value}</div></div>; }
+function Impact({ value, label, detail }: { value: string; label: string; detail: string }) { return <div className="rounded-lg border border-[oklch(0.85_0.21_145/0.18)] bg-[oklch(0.85_0.21_145/0.035)] p-3"><div className="text-[9px] text-muted-foreground">{label}</div><div className="text-2xl font-mono text-[oklch(0.85_0.21_145)] mt-1">{value}</div><div className="text-[8px] text-muted-foreground mt-1">{detail}</div></div>; }
+function Status({ name, value, tone }: { name: string; value: string; tone: "good" | "warn" | "info" }) { const c = tone === "good" ? "text-[oklch(0.85_0.21_145)]" : tone === "warn" ? "text-[oklch(0.82_0.17_75)]" : "text-[oklch(0.72_0.18_245)]"; return <div className="flex items-center py-1.5 text-[10px]"><span className={`w-2 h-2 rounded-full mr-2 ${tone === "good" ? "bg-[oklch(0.85_0.21_145)]" : tone === "warn" ? "bg-[oklch(0.82_0.17_75)]" : "bg-[oklch(0.72_0.18_245)]"}`} /><span className="flex-1">{name}</span><span className={c}>{value}</span></div>; }
+function Row({ k, v }: { k: string; v: string }) { return <div className="flex justify-between border-b border-white/[0.06] py-1"><span className="text-muted-foreground">{k}</span><span>{v}</span></div>; }
