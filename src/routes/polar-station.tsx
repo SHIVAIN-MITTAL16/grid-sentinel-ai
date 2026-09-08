@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { BatteryCharging, CloudSnow, Fuel, ShieldCheck, Wind } from "lucide-react";
+import { BatteryCharging, CloudSnow, Fuel, ShieldCheck, Wind, Zap } from "lucide-react";
 import {
   fetchPolarSimulation,
   getPolarStationState,
@@ -29,6 +29,10 @@ const SCENARIOS: { id: PolarScenario; name: string; storm: number; light: number
   { id: "low-light", name: "Low-Light Event", storm: 35, light: 90, wind: 20 },
   { id: "wind-derating", name: "Wind Derating", storm: 25, light: 25, wind: 75 },
 ];
+
+const DIESEL_LITRES_PER_KWH = 0.29;
+const DIESEL_COST_INR_PER_LITRE = 95;
+const DIESEL_CO2_KG_PER_LITRE = 2.68;
 
 function PolarStation() {
   const [scenario, setScenario] = useState<PolarScenario>("nominal");
@@ -61,6 +65,12 @@ function PolarStation() {
   const risk = backend?.risk ?? fallbackRisk;
   const optimized = backend?.optimized ?? fallbackOptimized;
   const live = Boolean(backend);
+  const fuelSavedLitres = Math.max(0, risk.fuelUsedLitres - optimized.fuelUsedLitres);
+  const fuelSavingPercent = reductionPercent(risk.fuelUsedLitres, optimized.fuelUsedLitres);
+  const fuelCostSaved = fuelSavedLitres * DIESEL_COST_INR_PER_LITRE;
+  const co2AvoidedKg = fuelSavedLitres * DIESEL_CO2_KG_PER_LITRE;
+  const shortageReduction = reductionPercent(risk.shortageProbabilityPercent, optimized.shortageProbabilityPercent);
+  const eueReduction = reductionPercent(risk.expectedUnservedEnergyKwh, optimized.expectedUnservedEnergyKwh);
 
   return (
     <div className="px-6 py-6 space-y-6">
@@ -94,6 +104,31 @@ function PolarStation() {
           </button>
         ))}
       </div>
+
+      <section className="panel p-6 border-[oklch(0.85_0.21_145/0.3)] shadow-[0_0_40px_-18px_oklch(0.85_0.21_145/0.55)]">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="hud-label flex items-center gap-2"><Zap size={13} /> HERO IMPACT · BASELINE VS SENTINEL</div>
+            <h2 className="font-display text-2xl mt-1">What the decision changes</h2>
+            <p className="text-xs text-muted-foreground mt-1">
+              Paired deterministic runs using the same {risk.scenarios.toLocaleString()} scenarios and seed 26061 for {selected.name}.
+            </p>
+          </div>
+          <div className="text-[10px] font-mono px-2 py-1 rounded border border-[oklch(0.85_0.21_145/0.25)] text-[oklch(0.85_0.21_145)]">
+            MODELED · NOT FIELD MEASURED
+          </div>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mt-5">
+          <ImpactCard label="Fuel saving" value={fuelSavingPercent === null ? "—" : `${fuelSavingPercent}%`} detail={`${fuelSavedLitres.toFixed(1)} L / scenario`} />
+          <ImpactCard label="Fuel cost avoided" value={`₹${Math.round(fuelCostSaved).toLocaleString("en-IN")}`} detail="per simulated scenario" />
+          <ImpactCard label="CO₂ avoided" value={`${co2AvoidedKg.toFixed(1)} kg`} detail="per simulated scenario" />
+          <ImpactCard label="Shortage risk" value={shortageReduction === null ? "—" : `${shortageReduction}%`} detail="relative reduction" />
+          <ImpactCard label="EUE" value={eueReduction === null ? "—" : `${eueReduction}%`} detail="relative reduction" />
+        </div>
+        <div className="mt-4 text-[10px] text-muted-foreground font-mono">
+          Assumptions: diesel consumption 0.29 L/kWh · ₹95/L fuel cost · 2.68 kg CO₂/L. Fuel/cost/CO₂ are modeled from the simulator; validate with station-specific data before investment decisions.
+        </div>
+      </section>
 
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-6">
         <section className="panel p-6">
@@ -129,6 +164,21 @@ function PolarStation() {
           </div>
         </aside>
       </div>
+    </div>
+  );
+}
+
+function reductionPercent(baseline: number, optimized: number): number | null {
+  if (baseline <= 0) return null;
+  return Math.round(((baseline - optimized) / baseline) * 1000) / 10;
+}
+
+function ImpactCard({ label, value, detail }: { label: string; value: string; detail: string }) {
+  return (
+    <div className="rounded-xl border border-[oklch(0.85_0.21_145/0.18)] bg-[oklch(0.16_0.028_260/0.5)] p-4">
+      <div className="text-[10px] text-muted-foreground">{label}</div>
+      <div className="font-mono text-2xl mt-2 text-[oklch(0.85_0.21_145)]">{value}</div>
+      <div className="text-[10px] text-muted-foreground mt-1">{detail}</div>
     </div>
   );
 }
