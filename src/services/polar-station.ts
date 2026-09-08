@@ -130,7 +130,6 @@ export function optimizePolarDispatch(state: PolarStationState): PolarRiskResult
   const optimizedState: PolarStationState = {
     ...state,
     loadKw: Math.max(state.criticalLoadKw, state.loadKw - state.deferrableLoadKw * 0.55),
-    batterySocPercent: Math.max(state.batterySocPercent, state.reserveTargetPercent + 12),
   };
   const optimized = runPolarRiskSimulation(optimizedState);
 
