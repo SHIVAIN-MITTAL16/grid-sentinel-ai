@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { N1SecurityAnalysis } from "@/components/grid/n1-security-analysis";
 import { useMemo } from "react";
 import { IndiaGeoMap } from "@/components/grid/india-geo-map";
 import {
@@ -23,7 +24,7 @@ export const Route = createFileRoute("/digital-twin")({
       { property: "og:description", content: "India's national power grid, modeled in real time." },
     ],
   }),
-  component: DigitalTwin,
+  component: N1SecurityAnalysis,
 });
 
 function DigitalTwin() {
