@@ -42,7 +42,13 @@ export interface NationalGridSnapshot {
  */
 export async function getNationalGridSnapshot(): Promise<NationalGridSnapshot> {
   const weatherByCapital = await fetchIndianStateCapitalWeather();
+  return buildNationalGridSnapshot(weatherByCapital);
+}
 
+/** Builds the existing grid snapshot from already-fetched weather to avoid duplicate API calls. */
+export function buildNationalGridSnapshot(
+  weatherByCapital: readonly CapitalWeatherData[],
+): NationalGridSnapshot {
   return {
     generatedAt: new Date().toISOString(),
     source: "open-meteo",
