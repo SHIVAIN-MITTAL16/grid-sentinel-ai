@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Activity, BellRing, CheckCircle2, Clock3, Database, RefreshCw, ShieldAlert, Smartphone } from "lucide-react";
 
 const runEarlyWarningCheck = createServerFn({ method: "POST" }).handler(async () => {
@@ -60,7 +60,7 @@ function PreCrisisAlertsPage() {
   const [assessment, setAssessment] = useState<Awaited<ReturnType<typeof runEarlyWarningCheck>> | null>(null);
   const [alerts, setAlerts] = useState<Alert[]>([]);
 
-  async function refreshHistory() {
+  const refreshHistory = useCallback(async () => {
     setHistoryLoading(true);
     setHistoryError("");
     try {
@@ -70,9 +70,9 @@ function PreCrisisAlertsPage() {
     } finally {
       setHistoryLoading(false);
     }
-  }
+  }, []);
 
-  useEffect(() => { void refreshHistory(); }, []);
+  useEffect(() => { void refreshHistory(); }, [refreshHistory]);
 
   async function runCheck() {
     setLoading(true);
