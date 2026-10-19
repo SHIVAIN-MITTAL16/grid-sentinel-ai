@@ -29,18 +29,6 @@ function Panel({ title, eyebrow, children, className = "" }: { title: string; ey
   return <section className={"rounded-2xl border border-cyan-300/15 bg-[linear-gradient(145deg,rgba(10,25,46,.94),rgba(4,10,23,.96))] shadow-[0_18px_70px_-35px_rgba(34,211,238,.35)] " + className}><div className="border-b border-white/[0.06] px-5 py-4"><div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-cyan-300/75">{eyebrow || "GRID SENTINEL · DIGITAL TWIN"}</div><h3 className="mt-1 text-lg font-semibold tracking-tight text-slate-100 sm:text-xl">{title}</h3></div><div className="p-4 sm:p-5">{children}</div></section>;
 }
 
-function NetworkSketch({ selected, hasRun }: { selected: string; hasRun: boolean }) {
-  const nodes = [{ x: 110, y: 90, label: "WEST" }, { x: 245, y: 55, label: "NORTH" }, { x: 330, y: 125, label: "DELHI" }, { x: 235, y: 190, label: "CENTRAL" }, { x: 355, y: 240, label: "EAST" }, { x: 140, y: 260, label: "SOUTH" }];
-  const edges = [[0,1,"gujarat-maharashtra"],[1,2,"rajasthan-delhi"],[2,3,"mp-delhi"],[3,4,"central-substation"],[3,5,"northern-generator"],[0,3,"gujarat-maharashtra"],[1,3,"mp-delhi"],[2,4,"rajasthan-delhi"],[5,3,"northern-generator"]] as const;
-  return <svg viewBox="0 0 450 320" role="img" aria-label="Schematic regional transmission network for contingency selection" className="h-auto w-full">
-    <defs><radialGradient id="n1-bloom"><stop offset="0%" stopColor="#22d3ee" stopOpacity=".22"/><stop offset="100%" stopColor="#22d3ee" stopOpacity="0"/></radialGradient><filter id="n1-glow"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
-    <ellipse cx="235" cy="155" rx="205" ry="155" fill="url(#n1-bloom)"/>
-    {edges.map(([from, to, id], index) => { const a = nodes[from]; const b = nodes[to]; const active = selected === id; return <g key={index}><line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={active ? "#fb7185" : "#164e63"} strokeWidth={active ? 3 : 1.5} strokeDasharray={active ? "7 6" : "none"} opacity={active ? 1 : .8} />{active && <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#fb7185" strokeWidth="9" opacity=".13" filter="url(#n1-glow)"/>}</g>; })}
-    {nodes.map((node) => <g key={node.label}><circle cx={node.x} cy={node.y} r="17" fill="#0b2135" stroke="#22d3ee" strokeOpacity=".35"/><circle cx={node.x} cy={node.y} r="5" fill="#67e8f9" filter="url(#n1-glow)"/><text x={node.x} y={node.y + 31} textAnchor="middle" fill="#b9d7e8" fontSize="10" fontWeight="600" letterSpacing="1.1">{node.label}</text></g>)}
-    {hasRun && <g><rect x="17" y="12" width="158" height="27" rx="8" fill="#3f1727" stroke="#fb7185" strokeOpacity=".7"/><text x="96" y="29" textAnchor="middle" fill="#fda4af" fontSize="10" fontWeight="700" letterSpacing="1">OUTAGE SCENARIO ACTIVE</text></g>}
-  </svg>;
-}
-
 export function N1SecurityAnalysis() {
   const [selectedId, setSelectedId] = useState(CONTINGENCIES[0].id);
   const [result, setResult] = useState(false);
