@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { Activity, AlertTriangle, CheckCircle2, ChevronDown, RotateCcw, Shield, Zap } from "lucide-react";
 import type { ReactNode } from "react";
+import { IndiaGeoMap } from "@/components/grid/india-geo-map";
+import { STATES } from "@/lib/grid-data";
 
 type ComponentKind = "Transmission line" | "Generator" | "Substation";
 type Contingency = { id: string; name: string; kind: ComponentKind; baseLoading: number; affected: string };
@@ -45,8 +47,6 @@ export function N1SecurityAnalysis() {
   const selected = useMemo(() => CONTINGENCIES.find((item) => item.id === selectedId) || CONTINGENCIES[0], [selectedId]);
   const estimatedLoading = Math.min(99.5, selected.baseLoading + (selected.kind === "Transmission line" ? 18 : 13));
   const estimatedViolations = estimatedLoading >= 90 ? 1 : 0;
-  const status = estimatedLoading >= 90 ? "Review required" : "Within modelled limits";
-  const statusTone = estimatedLoading >= 90 ? "amber" : "green";
   return <div className="space-y-5">
     <div className="relative overflow-hidden rounded-3xl border border-cyan-300/20 bg-[radial-gradient(ellipse_at_75%_0%,rgba(14,116,144,.2),transparent_45%),linear-gradient(135deg,#071426,#050a15_70%)] p-5 sm:p-7">
       <div className="pointer-events-none absolute -right-16 -top-24 h-64 w-64 rounded-full bg-cyan-400/[0.07] blur-3xl"/>
@@ -58,7 +58,8 @@ export function N1SecurityAnalysis() {
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(330px,.7fr)]">
       <Panel title="Transmission topology" eyebrow="Schematic · not a live SCADA diagram">
         <div className="mb-4 flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-400"><span className="flex items-center gap-2"><i className="h-2 w-2 rounded-full bg-cyan-300"/>Grid node</span><span className="flex items-center gap-2"><i className="h-0.5 w-5 bg-cyan-800"/>Healthy connection</span><span className="flex items-center gap-2"><i className="h-0.5 w-5 bg-rose-400"/>Selected outage</span></div>
-        <NetworkSketch selected={selectedId} hasRun={result}/>
+        <div className="overflow-hidden rounded-xl border border-cyan-200/10 bg-[#050b16]"><IndiaGeoMap data={STATES} height={520}/></div>
+        <div className="mt-3 flex items-start gap-3 rounded-xl border border-rose-300/15 bg-rose-300/[0.035] p-3"><span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-rose-300"/><div><div className="text-xs font-semibold text-rose-100">Selected contingency: {selected.name}</div><p className="mt-1 text-xs leading-5 text-slate-400">The map provides national geographic context. The selected outage is represented in the scenario controls; corridor-specific post-outage flows are not yet solved by a physical power-flow engine.</p></div></div>
         <div className="mt-3 flex items-start gap-3 rounded-xl border border-white/[0.06] bg-white/[0.025] p-3"><Activity size={17} className="mt-0.5 shrink-0 text-cyan-300"/><p className="text-xs leading-5 text-slate-400">This is a schematic topology for explaining contingency logic. It is not a geographically accurate transmission map or a substitute for a validated AC power-flow solver.</p></div>
       </Panel>
       <div className="space-y-5">
