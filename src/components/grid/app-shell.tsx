@@ -1,14 +1,16 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Activity, Globe2, FlaskConical, BrainCircuit, Snowflake, ClipboardCheck } from "lucide-react";
+import { Activity, Globe2, FlaskConical, BrainCircuit, Snowflake, ClipboardCheck, BellRing, ShieldCheck } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 
 const NAV = [
   { to: "/", label: "Command Center", icon: Activity, code: "01" },
-  { to: "/digital-twin", label: "Digital Twin", icon: Globe2, code: "02" },
+  { to: "/digital-twin", label: "N-1 Security", icon: ShieldCheck, code: "02" },
+  { to: "/grid-overview", label: "Grid Overview", icon: Globe2, code: "03" },
+  { to: "/pre-crisis-alerts", label: "Pre-crisis Alerts", icon: BellRing, code: "04" },
   { to: "/simulation", label: "Crisis Lab", icon: FlaskConical, code: "03" },
-  { to: "/texas-2021", label: "Texas 2021", icon: Snowflake, code: "04" },
-  { to: "/control-room", label: "AI Control Room", icon: BrainCircuit, code: "05" },
-  { to: "/evidence-room", label: "Evidence Room", icon: ClipboardCheck, code: "06" },
+  { to: "/texas-2021", label: "Texas 2021", icon: Snowflake, code: "05" },
+  { to: "/control-room", label: "AI Control Room", icon: BrainCircuit, code: "06" },
+  { to: "/evidence-room", label: "Evidence Room", icon: ClipboardCheck, code: "07" },
 ] as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
