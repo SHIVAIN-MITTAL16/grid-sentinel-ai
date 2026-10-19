@@ -97,6 +97,8 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/grid-overview'
+    | '/pre-crisis-alerts'
     | '/control-room'
     | '/digital-twin'
     | '/evidence-room'
