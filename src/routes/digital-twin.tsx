@@ -14,14 +14,14 @@ type DashboardSnapshot = ReturnType<typeof useNationalGridSnapshot>["data"];
 export const Route = createFileRoute("/digital-twin")({
   head: () => ({
     meta: [
-      { title: "India Digital Twin · Grid Sentinel AI" },
+      { title: "N-1 Security Analysis · Grid Sentinel AI" },
       {
         name: "description",
         content:
-          "A geographically accurate, real-time digital twin of India's national grid — stress, reliability, blackout probability, and transmission corridors across every state and union territory.",
+          "N-1 security analysis for the Grid Sentinel AI national grid digital twin. Explore single-component contingencies and review modelled grid stress estimates.",
       },
-      { property: "og:title", content: "India Digital Twin · Grid Sentinel AI" },
-      { property: "og:description", content: "India's national power grid, modeled in real time." },
+      { property: "og:title", content: "N-1 Security Analysis · Grid Sentinel AI" },
+      { property: "og:description", content: "Single-contingency grid resilience analysis and operator decision support." },
     ],
   }),
   component: N1SecurityAnalysis,
