@@ -12,20 +12,24 @@ const runEarlyWarningCheck = createServerFn({ method: "POST" }).handler(async ()
   if (risk.trigger) {
     const eventHour = risk.generatedAt.slice(0, 13);
     const eventKey = ["precrisis", risk.highestRiskState.toLowerCase().replace(/[^a-z0-9]+/g, "-"), eventHour, String(risk.thresholdPercent)].join(":");
-    await savePreCrisisAlert({
-      event_key: eventKey,
-      generated_at: risk.generatedAt,
-      projected_probability_percent: risk.projectedShortfallProbabilityPercent,
-      threshold_percent: risk.thresholdPercent,
-      horizon_hours: risk.horizonHours,
-      highest_risk_state: risk.highestRiskState,
-      forecast_hazard_score: risk.forecastHazardScore,
-      model_notice: risk.modelNotice,
-      notification_status: "not_sent",
-      provider_message_id: null,
-    });
-    persisted = true;
-    persistenceNotice = "Threshold crossed. Alert saved to Supabase; no SMS was sent.";
+    try {
+      await savePreCrisisAlert({
+        event_key: eventKey,
+        generated_at: risk.generatedAt,
+        projected_probability_percent: risk.projectedShortfallProbabilityPercent,
+        threshold_percent: risk.thresholdPercent,
+        horizon_hours: risk.horizonHours,
+        highest_risk_state: risk.highestRiskState,
+        forecast_hazard_score: risk.forecastHazardScore,
+        model_notice: risk.modelNotice,
+        notification_status: "not_sent",
+        provider_message_id: null,
+      });
+      persisted = true;
+      persistenceNotice = "Threshold crossed. Alert persisted or already recorded; no SMS was sent.";
+    } catch {
+      persistenceNotice = "Threshold crossed, but Supabase persistence failed. Check the server credentials and migration; no SMS was sent.";
+    }
   }
   return { risk, persisted, persistenceNotice };
 });
