@@ -27,7 +27,7 @@ export const Route = createFileRoute("/digital-twin")({
   component: N1SecurityAnalysis,
 });
 
-function DigitalTwin() {
+export function DigitalTwinDashboard() {
   const snapshotQuery = useNationalGridSnapshot();
   const monteCarloQuery = useMonteCarloResult();
   const optimizerQuery = useGridOptimizerResult();
