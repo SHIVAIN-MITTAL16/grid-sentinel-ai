@@ -1,5 +1,5 @@
 import { fetchIndianStateCapitalWeather } from "./weather-service";
-import { getNationalGridSnapshot } from "./grid-snapshot";
+import { buildNationalGridSnapshot } from "./grid-engine";
 import { runMonteCarloSimulation } from "./monte-carlo";
 
 export const PRE_CRISIS_THRESHOLD_PERCENT = 20;
@@ -34,10 +34,8 @@ function hazardScore(point: { temperatureCelsius: number; precipitationProbabili
  * until it is back-tested against historical grid events.
  */
 export async function evaluateForecastRisk(): Promise<ForecastRiskAssessment> {
-  const [snapshot, weather] = await Promise.all([
-    getNationalGridSnapshot(),
-    fetchIndianStateCapitalWeather(),
-  ]);
+  const weather = await fetchIndianStateCapitalWeather();
+  const snapshot = buildNationalGridSnapshot(weather);
   if (!snapshot.states.length || !weather.length) throw new Error("Risk evaluation requires grid and forecast data.");
 
   const monteCarlo = runMonteCarloSimulation(snapshot);
