@@ -16,6 +16,8 @@ import { Route as DigitalTwinRouteImport } from './routes/digital-twin'
 import { Route as ControlRoomRouteImport } from './routes/control-room'
 import { Route as EvidenceRoomRouteImport } from './routes/evidence-room'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as GridOverviewRouteImport } from './routes/grid-overview'
+import { Route as PreCrisisAlertsRouteImport } from './routes/pre-crisis-alerts'
 
 const Texas2021Route = Texas2021RouteImport.update({
   id: '/texas-2021', path: '/texas-2021', getParentRoute: () => rootRouteImport,
@@ -38,8 +40,20 @@ const EvidenceRoomRoute = EvidenceRoomRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/', path: '/', getParentRoute: () => rootRouteImport,
 } as any)
+const GridOverviewRoute = GridOverviewRouteImport.update({
+  id: '/grid-overview', path: '/grid-overview', getParentRoute: () => rootRouteImport,
+} as any)
+const PreCrisisAlertsRoute = PreCrisisAlertsRouteImport.update({
+  id: '/pre-crisis-alerts', path: '/pre-crisis-alerts', getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
+  '/grid-overview': typeof GridOverviewRoute
+  '/pre-crisis-alerts': typeof PreCrisisAlertsRoute
+  '/grid-overview': typeof GridOverviewRoute
+  '/pre-crisis-alerts': typeof PreCrisisAlertsRoute
+  '/grid-overview': typeof GridOverviewRoute
+  '/pre-crisis-alerts': typeof PreCrisisAlertsRoute
   '/': typeof IndexRoute
   '/control-room': typeof ControlRoomRoute
   '/digital-twin': typeof DigitalTwinRoute
@@ -71,6 +85,8 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/grid-overview'
+    | '/pre-crisis-alerts'
     | '/control-room'
     | '/digital-twin'
     | '/evidence-room'
@@ -99,6 +115,8 @@ declare module '@tanstack/react-router' {
     '/digital-twin': { id: '/digital-twin'; path: '/digital-twin'; fullPath: '/digital-twin'; preLoaderRoute: typeof DigitalTwinRouteImport; parentRoute: typeof rootRouteImport }
     '/control-room': { id: '/control-room'; path: '/control-room'; fullPath: '/control-room'; preLoaderRoute: typeof ControlRoomRouteImport; parentRoute: typeof rootRouteImport }
     '/': { id: '/'; path: '/'; fullPath: '/'; preLoaderRoute: typeof IndexRouteImport; parentRoute: typeof rootRouteImport }
+    '/grid-overview': { id: '/grid-overview'; path: '/grid-overview'; fullPath: '/grid-overview'; preLoaderRoute: typeof GridOverviewRouteImport; parentRoute: typeof rootRouteImport }
+    '/pre-crisis-alerts': { id: '/pre-crisis-alerts'; path: '/pre-crisis-alerts'; fullPath: '/pre-crisis-alerts'; preLoaderRoute: typeof PreCrisisAlertsRouteImport; parentRoute: typeof rootRouteImport }
   }
 }
 
